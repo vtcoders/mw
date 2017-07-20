@@ -18,7 +18,7 @@ var _mw = {
 function mw_client(
         userInit = function(mw) {
             console.log('MW called default userInit('+mw+')');
-                    }, opts = {})
+        }, opts = {})
 {
     // We handle protocols: http: https: ws: wss:
     // The http(s) protocols are converted to ws: or wss:
@@ -59,75 +59,77 @@ function mw_client(
 
     console.log('MW WebSocket trying to connect to:' + opts.url);
 
-    // the mw object inherits the WebSocket object
-    // the mw object is the WebSocket object
+    var ws = new WebSocket(opts.url);
 
-    var mw = new WebSocket(opts.url);
+    // The returned object:
+    var mw = {};
 
-    // Just to keep a list of these clients in a global
-    mw.ConnectionNum = _mw.connectionCount;
-    _mw.mw[mw.ConnectionNum.toString()] = mw;
+
+    // Just to keep a list of these clients in a global called _mw
+    var ConnectionNum = _mw.connectionCount;
+    _mw.mw[ConnectionNum.toString()] = mw;
     ++_mw.connectionCount;
 
 
+    ////////// Private object data ////////
+    
 
     var url = opts.url;
+    var clientId = 0; // unique id from the server 
 
-    var onCalls = {};
-    mw.recvCalls = {};
-    mw.cleanupCalls = {};
-    mw.Sources = {};
-    mw.SourceCount = 0;
-    mw.subscriptions = {};
-    mw.sendCount = 0; // a counter to label individual requests.
-    mw.globFuncs = { };
-    mw.globRequestId = 0;
+    var ws =new WebSocket(url);
     
-    mw.on = function(name, func) {
+    // for on() and emit() socket.IO like interfaces
+    var onCalls = {};
+    var recvCalls = {};
 
+    // client side request counter
+    var getSubscriptionCount = 0;
+
+    // List of all Subscriptions that are associated with this
+    // client/server
+    var subscriptions = {};
+
+    // advertisements are subscriptions that we have not loaded
+    // any javaScript for yet.
+    var advertisements = {};
+
+    // for globing files on the server
+    var globFuncs = { };
+    var globRequestIdCount = 0;
+
+    // Just a console.log() wrapper to keep prints
+    // starting the same for all this MW object.
+    function log(message) {
+
+        console.log('MW client (' + url + ') ' + message);
+    }
+
+    function on(name, func) {
+
+        // for socket.IO like interface
         onCalls[name] = func;
     };
 
-    mw._emit = function(name, data) {
 
+    function emit(name, data) {
+
+        // for socket.IO like interface
         var args = [].slice.call(arguments);
         var name = args.shift();
-        mw.send(JSON.stringify({ name: name, args: args }));
-    };
-
-    // Sends through the server to clients
-    mw.sendPayload = function() {
-
-        var args = [].slice.call(arguments);
-        var id = args.shift();
-        // 'P' is for payload, a magic constant
-        mw.send('P' + id + '=' + JSON.stringify({ args: args }));
-    };
-
-    // TODO: cleanup the naming of thing private and public.
-
-
-    // Do we subcribe? Return true or false
-    // TODO: move policy stuff.
-    function _checkSubscriptionPolicy(sourceId) {
-
-        // TODO: A simple policy for now, needs to be expanded.
-
-        if(mw.Sources[sourceId] !== undefined ||
-                // We are the source of this subscription.
-                mw.subscribeAll === false
-                // dumb policy flag.  TODO more code here
-          )
-            return false; // do not subscribe
-
-        return true; // subscribe
+        ws.send(JSON.stringify({ name: name, args: args }));
     }
 
+    // URL accessor; because the URL may not be the same
+    // as the user started with.
+    mw.url = function() {
+        return url;
+    };
 
-    mw.onmessage = function(e) {
 
-        //console.log('MW WebSocket message from '
-        //        + url + '\n   ' + e.data);
+    ws.onmessage = function(e) {
+
+        log('message:\n     ' + e.data);
 
         var message = e.data;
         // Look for 'P' the magic constant.
@@ -144,8 +146,7 @@ function mw_client(
                 ++idLen;
 
             if(idLen === stop) {
-                console.log('MW Bad WebSocket "on" message from ' +
-                        url + '\n  ' + e.data);
+                log('Bad WebSocket "on" message:\n   ' + e.data);
                 return;
             }
 
@@ -153,15 +154,17 @@ function mw_client(
             var sourceId = message.substr(1, idLen);
             var obj = JSON.parse(message.substr(2+idLen));
 
-            if(mw.recvCalls[sourceId] === undefined)
-                mw_fail('MW WebSocket on payload sink callback "' + name +
-                        '" not found for message from ' + url + '=' +
-                        '\n  ' + e.data);
+            if(recvCalls[sourceId] === undefined) {
+                log('on payload sink callback: "' + name +
+                        '\n   message=\n  ' + e.data);
+                mw_fail('MW on payload sink callback: "' + name +
+                        '\n   message=\n  ' + e.data);
+            }
 
             // There is an option to not have a callback to receive
-            // the payload with mw.recvCalls === null.
-            if(mw.recvCalls !== null)
-                (mw.recvCalls[sourceId])(...obj.args);
+            // the payload with recvCalls === null.
+            if(recvCalls !== null)
+                (recvCalls[sourceId])(...obj.args);
 
             return;
         }
@@ -177,79 +180,66 @@ function mw_client(
                     url + '\n  ' + e.data);
         }
 
-        if(mw.onCalls[name] === undefined)
+        if(onCalls[name] === undefined)
             mw_fail('MW WebSocket on callback "' + name +
                     '" not found for message from ' + url + ':' +
                     '\n  ' + e.data);
 
-        console.log('MW WebSocket handled message from '
-                + url + '\n   ' + e.data);
+        log('handled message=\n   ' + e.data);
 
         // Call the on callback function using array spread syntax.
         //https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Operators/Spread_operator
-        (mw.onCalls[name])(...obj.args);
+        (onCalls[name])(...obj.args);
     };
 
     mw.onclose = function(e) {
 
-        console.log('MW closed to ' + url);
+        log('closed WebSocket connection');
 
         // Remove this client from the connection list.
-        _mw.mw[mw.ConnectionNum] = null;
-        delete _mw.mw[mw.ConnectionNum];
+        _mw.mw[ConnectionNum] = null;
+        delete _mw.mw[ConnectionNum];
     };
 
     mw.onopen = function(e) {
 
         // Currently a no opt.
-        console.log('MW connected to ' + url);
+        log('connected');
+        emit('initiate');
     };
 
     // pretty good client webSocket tutorial.
     // http://cjihrig.com/blog/how-to-use-websockets/
 
-    mw.on('initiate',/*received from the server*/ function(id) {
+    on('initiate',/*received from the server*/ function(id) {
 
-        mw.Id = id;
+        clientId = id;
 
-        console.log('MW initiate from ' + url +
-                '\n   My client ID=' + id);
+        // set a starting/default user name
+        mw.user = 'User' + id;
 
-        // set a default user name
-        mw.Name = 'User' + id;
+        log('received "initiate"  My client ID=' + id);
+
         userInit(mw);
     });
 
 
-    mw.createSource = function(shortName, description,
-            tagOrJavaScriptSrc, func, cleanupFunc = null) {
-        // client source ID
-        var clientSourceId = (++mw.SourceCount).toString();
-        mw.CreateSourceFuncs[clientSourceId] = func;
-        // TODO: make this cleanupFunc do it's thing on a
-        // 'removeSource' server request ???
-        mw.CleanupSourceFuncs[clientSourceId] = cleanupFunc;
+    // See what files are on the server.  Used for example to get
+    // a list of avatars on the server.
+    on('glob', function(globRequestId, err, files) {
 
-        // Ask the server to create a new source of data
-        mw._emit('createSource', clientSourceId, shortName,
-                description, tagOrJavaScriptSrc);
-    };
-
-
-    mw.on('glob', function(globRequestId, err, files) {
-
-        mw_assert(typeof(mw.globFuncs[globRequestId]) === 'function',
+        mw_assert(typeof(globFuncs[globRequestId]) === 'function',
                 'bad glob received id=' + globRequestId);
-        mw.globFuncs[globRequestId](err, files);
-        delete mw.globFuncs[globRequestId];
+        globFuncs[globRequestId](err, files);
+        delete globFuncs[globRequestId];
     });
 
 
     mw.glob = function(expression, func) {
-        mw._emit('glob', expression, mw.globRequestId.toString());
-        mw.globFuncs[((mw.globRequestId)++).toString()] = func;
+        emit('glob', expression, globRequestIdCount.toString());
+        globFuncs[(globRequestIdCount++).toString()] = func;
     };
-
+ 
 
     // callbackFunc(avatars) is a function that gets the argument
     // avatars that is an array of avators that are like for example:
@@ -263,11 +253,11 @@ function mw_client(
             // We ask the server for a list of avatar files and
             // it returns it in the avatars array in the function
             // callback.
-            mw.glob('/mw/avatars/*.x3d', function(er, avatars) {
+            mw.glob('/mw/avatars/*.x3d', function(err, avatars) {
 
-                console.log('glob er=' + er + ' glob avatars=' + avatars);
-                if(er) {
-                    console.log('MW failed to get avatar list:\n   ' + er);
+                log('glob err=' + err + ' glob avatars=' + avatars);
+                if(err) {
+                    log('MW failed to get avatar list:\n   ' + err);
                     return;
                 }
 
@@ -320,86 +310,253 @@ function mw_client(
 
     };
 
+    // the server is destroying a subscription
+    on('destroy', function(id) {
 
-    mw.on('createSource', /*received from the server*/
+        var s = subscription[id];
+
+        if(s === undefined) {
+
+            // We may have not loaded the javaScript for this
+            // subscription yet.  This maybe okay.
+            log('got subscription (id=' + id +
+                ') "destroy" for unknown subscription');
+            return;
+        }
+
+        if(s.cleanupFunc)
+            s.cleanupFunc();
+
+        delete subscription[id];
+    });
+
+    on('advertise', function(id, name, shortName, description, javaScriptUrl) {
+
+        // TODO: figure this shit out:
+        
+        if(subscriptions[id] === undefined) {
+            advertisements[id] = { id: id, args: [].slice.call(arguments) };
+        }
+
+        
+    }
+
+
+    // getting a subscription after a 'get' new or old Subscription request
+    // from this client.
+    on('get', function(id, clientKey, name, shortName, isNew) {
+
+        log('getting ' + (isNew?'new':'old') + ' subscrition: '
+            shortName);
+
+        var s = subscriptions[clientKey];
+        // We need to change the key to this subscription
+        // using the server given ID which is just a integer.
+        subscriptions[id] = s;
+        delete subscriptions[clientKey];
+
+
+        if(isNew) {
+            // we call the creator only is this is a new subscription
+            s.creatorFunc();
+            // No other client will know about this subscription
+            // until after this 'initialize' is processed by the server.
+            emit('initialize', id, s.isOwner, s.isSubscribed);
+        }
+
+        // don't need the creator any more.
+        delete s.creatorFunc;
+
+        // TODO: determine if we need this id in this object.
+        //s.id = id; // save the server subscription ID
+
+        s.shortName = shortName; // The server will change the shortName
+        // making it more unique by appending a counter or like thing.
+
+        function send(payload) {
+            // 'P' is for payload, a magic constant
+            ws.send('P' + id + '=' + JSON.stringify({ args: payload }));
+        }
+
+        if(s.payload !== null)
+            // We have a write buffered from the creator function being
+            // called.
+            send(s.payload);
+
+        delete s.payload; // no longer need this buffer
+
+        // Now we can really send data instead of just buffering it, so we
+        // set the write() function to one that really writes to the web
+        // socket.
+        s.write = function() {
+            send([].slice.call(arguments));
+        };
+
+        s.subscribe = function() {
+
+            emit('subscribe', id);
+            s.subscribed = true;
+        };
+
+        s.unsubscribe = function() {
+
+            emit('unsubscribe', id);
+            s.subscribed = false;
+        };
+
+        s.destory = function() {
+
+            emit('destroy', id);
+        };
+
+        // Odd thing to happen.  Why not buffer this state?
+        // There may have been a change of heart in the creator function.
+        if(s.destroyed)
+            s.destory();
+
+        delete s.destroyed; // destroy is now no longer a buffered thing
+
+        printSubscriptions(); // debug printing
+    });
+        
+
+
+    // A private factory that returns subscription objects.
+    function newSubscription(name, shortName, description,
+            creatorFunc, readerFunc, cleanupFunc) {
+
+        var s = {
+            children: [],
+            parent: null,
+            isSubscribed: true,
+            isOwner: false,
+            name: name,
+            shortName: shortName,
+            creatorFunc: creatorFunc,
+            readerFunc: readerFunc,
+            cleanupFunc: cleanupFunc,
+            subscribe: function() {
+                this.isSubscribed = true;
+            },
+            destroyed: false,
+            destroy: function() {
+                this.destroyed = true;
+            },
+            unsubscribe: function() {
+                this.isSubscribed = false;
+            },
+            payload: null, // subscription state to be
+            write: function() {
+                // Save the last payload written:
+                this.payload = [].slice.call(arguments);
+                // We'll make this write to the webSocket
+                // after we get the subscription from
+                // the server.
+            },
+            makeOwner: function() {
+                this.isOwner = true;
+            },
+            createSubscriptionClass:
+                function(shortName, description,
+                        creatorFunc, readerFunc=null, cleanupFunc=null) {
+                    var child = newSubscription(null, shortName, description,
+                            creatorFunc, readerFunc, cleanupFunc);
+                    this.childred.push(child);
+                    child.parent = this;
+                },
+            getSubscription: function(name, shortName, description,
+                        creatorFunc, readerFunc=null, cleanupFunc=null) {
+                    var child = newSubscription(name, shortName, description,
+                            creatorFunc, readerFunc, cleanupFunc);
+                    this.childred.push(child);
+                    child.parent = this;
+                },
+            setReader: function(readerFunc) {
+                this.readerFunc = readerFunc;
+            },
+            setCleanup: function(cleanupFunc) {
+                this.cleanupFunc = cleanupFunc;
+            }
+        };
+
+        var clientKey = 'ck' + (++getSubscriptionCount).toString();
+
+        // Talk to the server
+        emit('get', clientKey, name, shortName, description);
+
+        // Add it to the list of subscriptions:
+        subscriptions[clientkey] = s;
+
+        return s; // return the subscription object
+    }
+
+
+    // Create a named subscription.  Clearly the creatorFunc is ignored if
+    // the subscription exist on the server already.
+    mw.getSubscription = function(
+            name,
+            shortName, description,
+            creatorFunc, readerFunc=null, cleanupFunc=null) {
+
+        return newSubscription(
+                name, shortName, description,
+                creatorFunc, readerFunc, cleanupFunc);
+    };
+
+
+    // Create an unnamed subscription, as in we do not care what it is
+    // called on the server.   The new subscription created by each client
+    // that calls this is just defined by the callback functions that are
+    // set.   shortName and description are not required to be unique,
+    // they are just user descriptions.  The readerFunc, and
+    // cleanupFunc callbacks are the guts of define the behavior of the
+    // subscription.
+    mw.createSubscriptionClass = function(
+            shortName, description,
+            creatorFunc, readerFunc=null, cleanupFunc=null) {
+
+        return newSubscription(
+                null, shortName, description,
+                creatorFunc, readerFunc, cleanupFunc);
+    };
+
+
+    on('get', /* create or connect to subscription received from the
+                  * server after client sent 'get' request */
         function(clientSourceId, serverSourceId, shortName) {
 
-            var func = mw.CreateSourceFuncs[clientSourceId];
-            // The shortName will be modified by the server and
-            // returned in this callback to the javaScript that
-            // called mw.createSource().
-            func(serverSourceId, shortName);
-            // We are done with this function.
-            delete mw.CreateSourceFuncs[clientSourceId];
+            // TODO: MORE CODE HERE.
 
-            // Record that we are a source: If mw.Sources[serverSourceId]
-            // is defined we are a source to the serverSourceId
-            // subscription and while we are at it use the cleanup
-            // function as the value.
-            mw.Sources[serverSourceId] = mw.CleanupSourceFuncs[clientSourceId];
-
+ 
             // Now that we have things setup for this source we tell the
             // server to advertise the 'newSubscription'.  The server
-            // can't send out the 'newSubscription' advertisement until we
-            // tell it to, so that we have no race condition:  If we got
-            // the 'newSubscription' before we received the sourceId we
-            // could not tell if we are the client that is the source for
-            // receiving the corresponding 'newSubscription' below...
-            mw._emit('advertise', serverSourceId);
+            // can't send out the advertisement until we tell it to, so
+            // that we have no race condition:  If we got the
+            // 'newSubscription' before we received the sourceId we could
+            // not tell if we are the client that is the source for
+            // receiving the corresponding on('advertise',,) below...
+            emit('advertise', serverSourceId);
 
             // TODO: add a client initiated removeSource interface
         }
     );
 
-    // For Client code initiated unsubscribe.  The server sends
-    // 'removeSource' events for when subscription become unavailable.
-    mw.unsubscribe = function(sourceId) {
-
-        // TODO: More code here.
-        console.log('MW unsubscribing to ' +
-                mw.subscriptions[sourceId].shortName);
-
-        // TODO: remove the <script> if there is one.
-
-        if(mw.cleanupCalls[sourceId] !== undefined) {
-            console.log('MW calling cleanupCall(sourceId=' +
-                        sourceId + ')');
-                    // The user is not required to define a cleanup function.
-                    // Look how easy it is to pass the arguments.
-                    mw.cleanupCalls[sourceId].apply(mw, arguments);
-        }
-
-        delete mw.recvCalls[sourceId];
-        if(mw.cleanupCalls[sourceId] !== undefined)
-            delete mw.cleanupCalls[sourceId];
-        delete mw.subscriptions[sourceId];
-
-        mw.printSubscriptions();
-    };
-
-
-    function _subscribeType(id) {
-
-        // (unsubscribed), (reading), (writing), or (reading/writing)
-        var type = '';
-        if(mw.recvCalls[id] !== undefined)
-            type = 'reading';
-        if(mw.Sources[id] !== undefined) {
-            if(type.length > 0) return 'reading/writing';
-            else return 'writing';
-        }
-        if(type.length === 0)
-            return 'not subscribed';
-        return type;
-    };
-
-
-    // This long function just spews for debugging and does nothing
+    // This function just spews for debugging and does nothing
     // else.
-    mw.printSubscriptions = function() {
+    function printSubscriptions() {
 
+        log('======== Current Subscriptions =========\n' +
+            '\n'
+        );
+
+        for(var key in subscriptions) {
+            var s = subscriptions[key];
+            log('    name='  + s.name +
+                    '  shortName =' +  s.shortName + ' ---  ' +
+                    s.subscribed?'SUBSCRIBED ':'' +
+                    s.isOwner?'OWNER':'');
+        }
     };
-
 
     return mw;
 }
@@ -425,10 +582,6 @@ function mw_init() {
 
     mw_client(/*on initiate*/function(mw) {
 
-        // When this is executed all the stuff is loaded.
-        mw_addActor(url,
-                function() {mw._emit('initiate');}
-                , { mw: mw }
-                );
+        mw_addActor(url, null, { mw: mw });
     });
 }

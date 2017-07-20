@@ -6,6 +6,6 @@
     mw_addActor(prefix + 'plane.x3d');
     mw_addActor(prefix + 'gnome.x3d');
 
-    mw_addActor(prefix + '../subscription/viewpointAvatar.js');
+    mw_addActor(prefix + '../subscriptions/viewpointAvatar.js');
 
 })();

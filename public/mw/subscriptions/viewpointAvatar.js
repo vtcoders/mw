@@ -1,6 +1,11 @@
 
 (function () {
 
+    var mw = mw_getScriptOptions().mw;
+
+    // avatars will be an array of all available avatar URLs
+    var avatars = null;
+
 
     function addAvatar(avatarUrl) {
 
@@ -8,6 +13,8 @@
          * We don't care what this subscription is called, it's just
          * defined by this javaScript code, so it's anonymous. */
         mw.createSubscriptionClass(
+            'avatar' /*shortName*/,
+            'user avatar' /*description*/,
 
             /* Creator initialization of this top level subscription class */
             function() {
@@ -37,6 +44,9 @@
                  * for each client that calls this.  It will depend on the
                  * top level avatarUrl parent subscription. */
                 this.createSubscriptionClass(
+                    'viewpoint_position' /*shortName*/,
+                    'user avatar using viewpoint position' /*description*/,
+
 
                     /* child creator */
                     function() {
@@ -142,12 +152,13 @@
     }
 
 
-    mw.getAvatarUrl(function(avatarUrl) {
+    mw.getAvatars(function(avatars_, avatarIndex) {
 
-        addAvatar(avatarUrl);
+        avatars = avatars_; // save array of avatars
+
+        // Load an avatar from this array list
+        addAvatar(avatars[avatarIndex]);
 
     });
-
-
 
 })();

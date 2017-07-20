@@ -8,8 +8,8 @@
 
     mw_client(
         function(mw) {
-            
-            console.log('MW added Mirror Worlds connection ' + mw.url);
+
+            console.log('MW added Mirror Worlds connection ' + mw.url());
         },
         { url: 'http://localhost:8881'}
     );

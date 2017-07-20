@@ -141,16 +141,23 @@ file system.
 
 - **subscriptions** or *subs* the record for a networked events which are
   kept on the server.  Each subscription has the following properties:
+
+  - *parents* and *children* may not be needed on the server side.
+
   - **parents** subscriptions that this subscription depends on.
     We can get siblings from the parents children.  TODO: Is this
     a general graph with directed links or just a tree?
   - **children** subscriptions that depend on this subscription
+
+  - **initialized** if not set to true we are still waiting for
+    the subcription client creator to *initialize* it
+
   - **readers** a list of clients that read this record
   - **owner** this subscription will be removed if the client owner closes
     it's connection
-  - **name** unique name relative to all siblings
+  - **name** unique name relative to all siblings or null if not set
   - **id** a unique per-subscription id gotten from a counter on the
-    server.  It's an integer.
+    server.  It's an integer as a string.
   - **shortName** a short description that includes the id in it
   - **description** a longer description that may include HTML
   - **payload** the current state of the subscription that was sent from a
@@ -171,10 +178,14 @@ file system.
      - it has to be this way in order to keep subscription state
        on the server and all clients consistant
 
+     - We do not open a subscription for writing.  We just write,
+       depending on what the client javaScript tells us to do
+
  - All clients subscribe to all subscriptions by default.  Use
    *unsubscribe()* to opt out and *subscribe()* to opt back in.
 
    - therefore subscription policy is implemented via client javaScript
+
 
 
 ## Client Record
@@ -197,8 +208,13 @@ All commands that are sent from the client to the server:
 
 - **write** writes payload/state to a subscription
 
-- **advertise** clients okay after which all clients except the
-  subscription creator are sent an *advertise*
+- **initialize** initialize a subscription.  A subscription cannot
+  be read from until it is initialized.  This is so a client can
+  determine if subscription initialization need to be run or not.
+  We only let one client initialize a subscription.  The server
+  response from *get* determines if the subscription is new and
+  needs to be initialized.  *initialize* is not used if this
+  subscription is not new
 
 - **get** request to create or connect to a subscription, server responds
   with *get*
@@ -222,7 +238,8 @@ All commands that are sent from server to clients:
 
 - **advertise** send new subscriptions, may be array of them
 
-- **get** response to *create*.  Client gets subscription id.
+- **get** response to *get* (create or connect request).  Client gets
+  subscription id.
 
 - **destroy** send to client to notify them that a subscription no
   longer exists
