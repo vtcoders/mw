@@ -150,12 +150,20 @@ file system.
   - **children** subscriptions that depend on this subscription
 
   - **initialized** if not set to true we are still waiting for
-    the subcription client creator to *initialize* it
-
+    the subcription client creator to *initialize* it.  It can be
+    written to before it's *initialized* but no one can read it
+    until it's *initialized*.
+  - **creatorClient** the client webSocket that caused this
+    subscription to be created.  Not necessarly the *owner*
+    client, but likely is.  Note: many subscriptions do not
+    have an *owner*, they keep state as all clients come and go.
   - **readers** a list of clients that read this record
   - **owner** this subscription will be removed if the client owner closes
     it's connection
-  - **name** unique name relative to all siblings or null if not set
+  - **name** unique name relative to all siblings or null if not set.
+    *name* or *className* will be set.
+  - **className** if set this maybe one of many subscriptions of this
+    class type.  *name* or *className* will be set.
   - **id** a unique per-subscription id gotten from a counter on the
     server.  It's an integer as a string.
   - **shortName** a short description that includes the id in it
@@ -163,6 +171,13 @@ file system.
   - **payload** the current state of the subscription that was sent from a
     client.  TODO: payloads may need to be able to be queued, timestamped,
     and/or have other properties.  TODO: queuing and timestamping.
+
+## TODO
+
+- Add the ability to push subscriptions to clients that have not and are
+  not staged yet to load the subscription javaScript.
+
+- Rooms and world segregation on a single server.
 
 
 ## Yup
@@ -236,7 +251,13 @@ All commands that are sent from server to clients:
   counter.  The client responds by requesting files via http GET and also
   sends a *initiate* command to the server.
 
-- **advertise** send new subscriptions, may be array of them
+- **advertise** send new subscriptions, may be array of them.
+  TODO: currently all subscriptions are known from the javaScript files
+  that are staged to be loaded and the only subscriptions that need to be
+  advertised are subscriptions with a className that are created by other
+  clients, since they will not be known without advertisement.  We need to
+  *advertise* subscriptions to the clients that are not yet staged to load
+  the relevant javaScript.
 
 - **get** response to *get* (create or connect request).  Client gets
   subscription id.

@@ -44,6 +44,8 @@
                  * for each client that calls this.  It will depend on the
                  * top level avatarUrl parent subscription. */
                 this.createSubscriptionClass(
+                    'viewpoint_position_xyzRot', /*unique className used to
+                    * define this class of subscription*/
                     'viewpoint_position' /*shortName*/,
                     'user avatar using viewpoint position' /*description*/,
 

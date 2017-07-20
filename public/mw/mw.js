@@ -330,34 +330,55 @@ function mw_client(
         delete subscription[id];
     });
 
-    on('advertise', function(id, name, shortName, description, javaScriptUrl) {
 
-        // TODO: figure this shit out:
+    // TODO: currently this only adds subscriptions that have a className.
+    on('advertise', function(id, name, className, shortName, description, javaScriptUrl) {
+
+
+        mw_assert(className, "className was not set");
         
-        if(subscriptions[id] === undefined) {
-            advertisements[id] = { id: id, args: [].slice.call(arguments) };
+        mw_assert(subscriptions[id] === undefined,
+            '"advertise" for a known subscription: shortName=' + shortName); 
+            
+        // TODO: add additional javaScript loading for the subscription
+
+        if(subscriptions[className] === undefined) {
+            // Save this for later
+            advertisements[className] = id;
+            return;
         }
 
-        
-    }
 
 
-    // getting a subscription after a 'get' new or old Subscription request
-    // from this client.
-    on('get', function(id, clientKey, name, shortName, isNew) {
+
+        // Construct a subscription object for this particular instance of
+        // a class of subscription.
+
+        subscriptionInit(id, className/*clientKey*/, name,
+                className, shortName, true/*isInitialized*/);
+    });
+
+
+    // getting a subscription in response to a 'get' new or old
+    // Subscription request from this client.
+    function subscriptionInit(id, clientKey, name, className, shortName, isInitialized) {
 
         log('getting ' + (isNew?'new':'old') + ' subscrition: '
             shortName);
 
-        var s = subscriptions[clientKey];
-        // We need to change the key to this subscription
-        // using the server given ID which is just a integer.
-        subscriptions[id] = s;
-        delete subscriptions[clientKey];
+        // We need to copy the subscription object and make it active.  We
+        // use the server given ID which is just a integer as a string
+        // that is unique for all subscriptions on that server.
+        var s = subscriptions[id] = subscriptions[clientKey].copy();
 
-
-        if(isNew) {
-            // we call the creator only is this is a new subscription
+        if(name) {
+            // There will be no more subription with this name or
+            // clientKey, so we do not need this record any more.
+            delete subscriptions[clientKey];
+        }
+        
+        if(!isInitialized) {
+            // we call the creator only if this is a new subscription
             s.creatorFunc();
             // No other client will know about this subscription
             // until after this 'initialize' is processed by the server.
@@ -416,25 +437,56 @@ function mw_client(
 
         delete s.destroyed; // destroy is now no longer a buffered thing
 
+        s.isInitialized = true;
+
         printSubscriptions(); // debug printing
+    }
+
+
+    on('get', function(id, clientKey, name, className, shortName, isInitialized) {
+
+        subscriptionInit(id, clientKey, name, className, shortName, isInitialized);
     });
-        
 
 
     // A private factory that returns subscription objects.
-    function newSubscription(name, shortName, description,
+    function newSubscription(
+            name, className,
+            shortName, description,
             creatorFunc, readerFunc, cleanupFunc) {
 
-        var s = {
+        mw_assert(((name && name.length > 0) ||
+                (className && className.length > 0)),
+                'neither name or className are set');
+        mw_assert(!name || !className),
+                'both name and className are set');
+
+
+        // make a subscription object explicitly
+        var subscription = {
             children: [],
             parent: null,
             isSubscribed: true,
             isOwner: false,
             name: name,
+            className: className,
             shortName: shortName,
             creatorFunc: creatorFunc,
             readerFunc: readerFunc,
             cleanupFunc: cleanupFunc,
+            isInitialized: isInitialized, // can we use it yet.
+
+            // copy() returns a copy of this object.
+            // var obj2 = obj1 does not work, obj2 is a reference
+            // to obj1 and so changing obj2 fields changes obj1
+            // fields.
+            copy: function() {
+                var ret;
+                // copy just one level deep
+                for(var k in this)
+                    ret[k] = this[k];
+                return ret;
+            },
             subscribe: function() {
                 this.isSubscribed = true;
             },
@@ -445,9 +497,10 @@ function mw_client(
             unsubscribe: function() {
                 this.isSubscribed = false;
             },
-            payload: null, // subscription state to be
+            payload: null, // buffers subscription state
+            // until the subscription is confirmed to be on the server.
             write: function() {
-                // Save the last payload written:
+                // Save (buffer) the last payload written:
                 this.payload = [].slice.call(arguments);
                 // We'll make this write to the webSocket
                 // after we get the subscription from
@@ -457,20 +510,21 @@ function mw_client(
                 this.isOwner = true;
             },
             createSubscriptionClass:
-                function(shortName, description,
+                function(className, shortName, description,
                         creatorFunc, readerFunc=null, cleanupFunc=null) {
-                    var child = newSubscription(null, shortName, description,
+                    var child = newSubscription(null, className, shortName, description,
                             creatorFunc, readerFunc, cleanupFunc);
                     this.childred.push(child);
                     child.parent = this;
-                },
-            getSubscription: function(name, shortName, description,
+            },
+            getSubscription:
+                function(name, null, shortName, description,
                         creatorFunc, readerFunc=null, cleanupFunc=null) {
-                    var child = newSubscription(name, shortName, description,
+                    var child = newSubscription(name, null, shortName, description,
                             creatorFunc, readerFunc, cleanupFunc);
                     this.childred.push(child);
                     child.parent = this;
-                },
+            },
             setReader: function(readerFunc) {
                 this.readerFunc = readerFunc;
             },
@@ -479,27 +533,31 @@ function mw_client(
             }
         };
 
-        var clientKey = 'ck' + (++getSubscriptionCount).toString();
+        // Make a key to store the subscription on this client
+        if(name)
+            var clientKey = ' k-e- yZ' + (++getSubscriptionCount).toString();
+        else
+            var clientKey = className;
 
         // Talk to the server
-        emit('get', clientKey, name, shortName, description);
+        emit('get', clientKey, name, className, shortName, description);
 
         // Add it to the list of subscriptions:
-        subscriptions[clientkey] = s;
+        subscriptions[clientkey] = subscription;
 
         return s; // return the subscription object
     }
 
 
     // Create a named subscription.  Clearly the creatorFunc is ignored if
-    // the subscription exist on the server already.
+    // the subscription exists on the server already.
     mw.getSubscription = function(
             name,
             shortName, description,
             creatorFunc, readerFunc=null, cleanupFunc=null) {
 
         return newSubscription(
-                name, shortName, description,
+                name, null, shortName, description,
                 creatorFunc, readerFunc, cleanupFunc);
     };
 
@@ -512,34 +570,15 @@ function mw_client(
     // cleanupFunc callbacks are the guts of define the behavior of the
     // subscription.
     mw.createSubscriptionClass = function(
+            className,
             shortName, description,
             creatorFunc, readerFunc=null, cleanupFunc=null) {
 
         return newSubscription(
-                null, shortName, description,
+                null, className, shortName, description,
                 creatorFunc, readerFunc, cleanupFunc);
     };
 
-
-    on('get', /* create or connect to subscription received from the
-                  * server after client sent 'get' request */
-        function(clientSourceId, serverSourceId, shortName) {
-
-            // TODO: MORE CODE HERE.
-
- 
-            // Now that we have things setup for this source we tell the
-            // server to advertise the 'newSubscription'.  The server
-            // can't send out the advertisement until we tell it to, so
-            // that we have no race condition:  If we got the
-            // 'newSubscription' before we received the sourceId we could
-            // not tell if we are the client that is the source for
-            // receiving the corresponding on('advertise',,) below...
-            emit('advertise', serverSourceId);
-
-            // TODO: add a client initiated removeSource interface
-        }
-    );
 
     // This function just spews for debugging and does nothing
     // else.
@@ -551,10 +590,12 @@ function mw_client(
 
         for(var key in subscriptions) {
             var s = subscriptions[key];
-            log('    name='  + s.name +
-                    '  shortName =' +  s.shortName + ' ---  ' +
+            if(s.initialized)
+                log('   [' + key + '] shortName=' +
+                    s.shortName + ' ---  ' +
                     s.subscribed?'SUBSCRIBED ':'' +
-                    s.isOwner?'OWNER':'');
+                    s.isOwner?'OWNER ':'' +
+                    s.name?('name=' +s.name):('className=' + s.className));
         }
     };
 
