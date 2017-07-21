@@ -59,8 +59,6 @@ function mw_client(
 
     console.log('MW WebSocket trying to connect to:' + opts.url);
 
-    var ws = new WebSocket(opts.url);
-
     // The returned object:
     var mw = {};
 
@@ -363,7 +361,7 @@ function mw_client(
     // Subscription request from this client.
     function subscriptionInit(id, clientKey, name, className, shortName, isInitialized) {
 
-        log('getting ' + (isNew?'new':'old') + ' subscrition: '
+        log('getting ' + (isNew?'new':'old') + ' subscrition: ' +
             shortName);
 
         // We need to copy the subscription object and make it active.  We
@@ -455,10 +453,10 @@ function mw_client(
             shortName, description,
             creatorFunc, readerFunc, cleanupFunc) {
 
-        mw_assert(((name && name.length > 0) ||
-                (className && className.length > 0)),
+        mw_assert((name && name.length > 0) ||
+                (className && className.length > 0),
                 'neither name or className are set');
-        mw_assert(!name || !className),
+        mw_assert(!name || !className,
                 'both name and className are set');
 
 
@@ -518,7 +516,7 @@ function mw_client(
                     child.parent = this;
             },
             getSubscription:
-                function(name, null, shortName, description,
+                function(name, shortName, description,
                         creatorFunc, readerFunc=null, cleanupFunc=null) {
                     var child = newSubscription(name, null, shortName, description,
                             creatorFunc, readerFunc, cleanupFunc);
