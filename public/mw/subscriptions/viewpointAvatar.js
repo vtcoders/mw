@@ -12,7 +12,7 @@
         /* Create a new subscription for each client that calls this.
          * We don't care what this subscription is called, it's just
          * defined by this javaScript code, so it's anonymous. */
-        mw.createSubscriptionClass(
+        mw.getSubscriptionClass(
             'avatar' /*shortName*/,
             'user avatar' /*description*/,
 
@@ -43,7 +43,7 @@
                 /* Create a child subscription.  Create a new subscription
                  * for each client that calls this.  It will depend on the
                  * top level avatarUrl parent subscription. */
-                this.createSubscriptionClass(
+                this.getSubscriptionClass(
                     'viewpoint_position_xyzRot', /*unique className used to
                     * define this class of subscription*/
                     'viewpoint_position' /*shortName*/,

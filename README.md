@@ -157,7 +157,7 @@ file system.
     subscription to be created.  Not necessarly the *owner*
     client, but likely is.  Note: many subscriptions do not
     have an *owner*, they keep state as all clients come and go.
-  - **readers** a list of clients that read this record
+  - **subscribers** a list of clients that read this record
   - **owner** this subscription will be removed if the client owner closes
     it's connection
   - **name** unique name relative to all siblings or null if not set.

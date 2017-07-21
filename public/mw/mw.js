@@ -168,7 +168,7 @@ function mw_client(
         }
 
         var obj = JSON.parse(e.data);
-        var name = obj.name;
+        var name = obj.name; // callback name (not subscription name)
 
         // We should have this form:
         // e.data = { name: eventName, args:  [ {}, {}, {}, ... ] }
@@ -346,11 +346,9 @@ function mw_client(
             return;
         }
 
-
-
-
         // Construct a subscription object for this particular instance of
         // a class of subscription.
+        var s = subscriptions[id] = subscriptions[className].copy();
 
         subscriptionInit(id, className/*clientKey*/, name,
                 className, shortName, true/*isInitialized*/);
@@ -440,7 +438,7 @@ function mw_client(
         printSubscriptions(); // debug printing
     }
 
-
+    // Called on server respond to clients 'get' request emit('get', ...)
     on('get', function(id, clientKey, name, className, shortName, isInitialized) {
 
         subscriptionInit(id, clientKey, name, className, shortName, isInitialized);
@@ -472,7 +470,7 @@ function mw_client(
             creatorFunc: creatorFunc,
             readerFunc: readerFunc,
             cleanupFunc: cleanupFunc,
-            isInitialized: isInitialized, // can we use it yet.
+            isInitialized: false, // can we use it yet.
 
             // copy() returns a copy of this object.
             // var obj2 = obj1 does not work, obj2 is a reference
@@ -483,6 +481,7 @@ function mw_client(
                 // copy just one level deep
                 for(var k in this)
                     ret[k] = this[k];
+                ret.initialized = false;
                 return ret;
             },
             subscribe: function() {
@@ -504,10 +503,11 @@ function mw_client(
                 // after we get the subscription from
                 // the server.
             },
+            // make this WebSocket client an owner
             makeOwner: function() {
                 this.isOwner = true;
             },
-            createSubscriptionClass:
+            getSubscriptionClass:
                 function(className, shortName, description,
                         creatorFunc, readerFunc=null, cleanupFunc=null) {
                     var child = newSubscription(null, className, shortName, description,
@@ -523,6 +523,7 @@ function mw_client(
                     this.childred.push(child);
                     child.parent = this;
             },
+            // set the reader callback function
             setReader: function(readerFunc) {
                 this.readerFunc = readerFunc;
             },
@@ -567,8 +568,8 @@ function mw_client(
     // they are just user descriptions.  The readerFunc, and
     // cleanupFunc callbacks are the guts of define the behavior of the
     // subscription.
-    mw.createSubscriptionClass = function(
-            className,
+    mw.getSubscriptionClass = function(
+            className, /* unique for this SubscriptionClass */
             shortName, description,
             creatorFunc, readerFunc=null, cleanupFunc=null) {
 
