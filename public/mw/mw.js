@@ -70,7 +70,7 @@ function mw_client(
 
 
     ////////// Private object data ////////
-    
+
 
     var url = opts.url;
     var clientId = 0; // unique id from the server 
@@ -89,19 +89,23 @@ function mw_client(
     var subscriptions = {};
 
     // advertisements are subscriptions that we have not loaded
-    // any javaScript for yet.
+    // any javaScript for yet, due to race or whatever reason.
     var advertisements = {};
 
     // for globing files on the server
     var globFuncs = { };
     var globRequestIdCount = 0;
 
-    // Just a console.log() wrapper to keep prints
-    // starting the same for all this MW object.
-    function log(message) {
 
-        console.log('MW client (' + url + ') ' + message);
-    }
+    // Just a object local console.log() wrapper to keep prints starting
+    // the same prefix for all this MW object.  By using bind we keep the
+    // line number where log() was called output-ed to console.log(), a
+    // simple function wrapper will not give correct line numbers. This
+    // totally rocks, it's so simple and bullet proof.
+    var debug = console.log.bind(console, 'MW Client(' + url + ') ');
+    // To disable debug spew:
+    // var debug = function() {};
+
 
     function on(name, func) {
 
@@ -127,7 +131,7 @@ function mw_client(
 
     ws.onmessage = function(e) {
 
-        log('message:\n     ' + e.data);
+        debug('message:\n     ' + e.data);
 
         var message = e.data;
         // Look for 'P' the magic constant.
@@ -144,7 +148,7 @@ function mw_client(
                 ++idLen;
 
             if(idLen === stop) {
-                log('Bad WebSocket "on" message:\n   ' + e.data);
+                debug('Bad WebSocket "on" message:\n   ' + e.data);
                 return;
             }
 
@@ -153,7 +157,7 @@ function mw_client(
             var obj = JSON.parse(message.substr(2+idLen));
 
             if(recvCalls[sourceId] === undefined) {
-                log('on payload sink callback: "' + name +
+                debug('on payload sink callback: "' + name +
                         '\n   message=\n  ' + e.data);
                 mw_fail('MW on payload sink callback: "' + name +
                         '\n   message=\n  ' + e.data);
@@ -183,26 +187,26 @@ function mw_client(
                     '" not found for message from ' + url + ':' +
                     '\n  ' + e.data);
 
-        log('handled message=\n   ' + e.data);
+        debug('handled message=\n   ' + e.data);
 
         // Call the on callback function using array spread syntax.
         //https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Operators/Spread_operator
         (onCalls[name])(...obj.args);
     };
 
-    mw.onclose = function(e) {
+    ws.onclose = function(e) {
 
-        log('closed WebSocket connection');
+        debug('closed WebSocket connection');
 
         // Remove this client from the connection list.
         _mw.mw[ConnectionNum] = null;
         delete _mw.mw[ConnectionNum];
     };
 
-    mw.onopen = function(e) {
+    ws.onopen = function(e) {
 
         // Currently a no opt.
-        log('connected');
+        debug('connected');
         emit('initiate');
     };
 
@@ -216,7 +220,7 @@ function mw_client(
         // set a starting/default user name
         mw.user = 'User' + id;
 
-        log('received "initiate"  My client ID=' + id);
+        debug('received "initiate"  My client ID=' + id);
 
         userInit(mw);
     });
@@ -253,9 +257,9 @@ function mw_client(
             // callback.
             mw.glob('/mw/avatars/*.x3d', function(err, avatars) {
 
-                log('glob err=' + err + ' glob avatars=' + avatars);
+                debug('glob err=' + err + ' glob avatars=' + avatars);
                 if(err) {
-                    log('MW failed to get avatar list:\n   ' + err);
+                    debug('MW failed to get avatar list:\n   ' + err);
                     return;
                 }
 
@@ -317,7 +321,7 @@ function mw_client(
 
             // We may have not loaded the javaScript for this
             // subscription yet.  This maybe okay.
-            log('got subscription (id=' + id +
+            debug('got subscription (id=' + id +
                 ') "destroy" for unknown subscription');
             return;
         }
@@ -359,7 +363,7 @@ function mw_client(
     // Subscription request from this client.
     function subscriptionInit(id, clientKey, name, className, shortName, isInitialized) {
 
-        log('getting ' + (isNew?'new':'old') + ' subscrition: ' +
+        debug('getting ' + (isNew?'new':'old') + ' subscrition: ' +
             shortName);
 
         // We need to copy the subscription object and make it active.  We
@@ -583,14 +587,14 @@ function mw_client(
     // else.
     function printSubscriptions() {
 
-        log('======== Current Subscriptions =========\n' +
+        debug('======== Current Subscriptions =========\n' +
             '\n'
         );
 
         for(var key in subscriptions) {
             var s = subscriptions[key];
             if(s.initialized)
-                log('   [' + key + '] shortName=' +
+                debug('   [' + key + '] shortName=' +
                     s.shortName + ' ---  ' +
                     s.subscribed?'SUBSCRIBED ':'' +
                     s.isOwner?'OWNER ':'' +
