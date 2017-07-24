@@ -215,21 +215,12 @@ All commands that are sent from the client to the server:
 
 - **onopen** sets up websocket *onmessage*
 
-- **initiate** server responds to client with *advertise* with an
-  array of subscriptions that it may write to, or read via a subscribe
-
 - **subscribe** request to read a subscription.  Server responds with
   *read* with the initial subscription state
 
 - **write** writes payload/state to a subscription
 
-- **initialize** initialize a subscription.  A subscription cannot
-  be read from until it is initialized.  This is so a client can
-  determine if subscription initialization need to be run or not.
-  We only let one client initialize a subscription.  The server
-  response from *get* determines if the subscription is new and
-  needs to be initialized.  *initialize* is not used if this
-  subscription is not new
+- **makeOwner**
 
 - **get** request to create or connect to a subscription, server responds
   with *get*
@@ -240,6 +231,16 @@ All commands that are sent from the client to the server:
 
 - **destroy** removes the subscription from the server.  Server
   responds to all clients with *destroy*
+
+- **P#={JSON}** sends a subscription payload (P) to the server.
+  Note: it's not using the socket.IO-like protocol.
+  - # is the subscription ID
+  - **{JSON}** is the stringified JSON of the readerFunc()
+    arguements
+  - Note: this cannot conflict with all other message types
+    given that it is not a JSON string with the leading **P=**.
+    This message is sent more often than all other messages
+    and so should be checked for first.
 
 
 ## Server to Client Subscription Commands
@@ -260,12 +261,18 @@ All commands that are sent from server to clients:
   the relevant javaScript.
 
 - **get** response to *get* (create or connect request).  Client gets
-  subscription id.
+  subscription id and other subscription parameters
 
 - **destroy** send to client to notify them that a subscription no
   longer exists
 
-- **read** subscription read pushed to client
+- **read** subscription read pushed to client.  This does not use the
+  socket.IO-like interface.
+
+- **P#={JSON}** sends a subscription payload (P) to subscribing clients.
+  Note: it's not using the socket.IO-like protocol.  The data sent is
+  exactly what the last client wrote to the subscription with an change.
+  This message is sent more often than all other messages.
 
 
 ## Startup
@@ -282,10 +289,11 @@ The order of events going down the table:
 
 The order of events going down the table:
 
-| To Server             | To Client                                    |
-|-----------------------|----------------------------------------------|
-| 'get'                 |                                              |
-|                       | 
+| To Server             | To Client                                      |
+|-----------------------|------------------------------------------------|
+| 'get'                 |                                                |
+|                       | 'get' let the client it is the creator or not  |
+|                       | calls creatorFunc and send 'initialize' or not |
 
 
 
