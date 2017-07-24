@@ -73,7 +73,7 @@ function mw_client(
 
 
     var url = opts.url;
-    var clientId = 0; // unique id from the server 
+    var clientId = 'unset'; // unique id from the server 
 
     var ws =new WebSocket(url);
     
@@ -97,19 +97,31 @@ function mw_client(
     var globRequestIdCount = 0;
 
 
-    // Just a object local console.log() wrapper to keep prints starting
-    // the same prefix for all this MW object.  By using bind we keep the
-    // line number where log() was called output-ed to console.log(), a
-    // simple function wrapper will not give correct line numbers. This
-    // totally rocks, it's so simple and bullet proof.
-    var debug = console.log.bind(console, 'MW Client(' + url + ') ');
+    var debug;
+    function setDebugPrefix() {
+        // Just a object local console.log() wrapper to keep prints
+        // starting the same prefix for all this MW object.  By using bind
+        // we keep the line number where log() was called output-ed to
+        // console.log(), a simple function wrapper will not give correct
+        // line numbers. This totally rocks, it's so simple and bullet
+        // proof.
+        debug = console.log.bind(console, 'MW Client[' +
+            clientId +'](' + url + '):');
+    }
+    setDebugPrefix();
+
     // To disable debug spew:
     // var debug = function() {};
 
 
+    // for socket.IO like interface
     function on(name, func) {
 
-        // for socket.IO like interface
+        mw_asert(onCalls[name] === undefined,
+            "setting on('" + name + '", ...) callback a second time." +
+            " Do you want to override the current callback or " +
+            "add an additional callback to '" + name +
+            "'.  You need to edit this code.");
         onCalls[name] = func;
     };
 
@@ -207,7 +219,6 @@ function mw_client(
 
         // Currently a no opt.
         debug('connected');
-        emit('initiate');
     };
 
     // pretty good client webSocket tutorial.
@@ -218,7 +229,10 @@ function mw_client(
         clientId = id;
 
         // set a starting/default user name
-        mw.user = 'User' + id;
+        mw.user = 'User-' + id;
+        // Now that we have the Client ID we set the
+        // debug spew prefix again.
+        setDebugPrefix();
 
         debug('received "initiate"  My client ID=' + id);
 
@@ -335,7 +349,6 @@ function mw_client(
 
     // TODO: currently this only adds subscriptions that have a className.
     on('advertise', function(id, name, className, shortName, description, javaScriptUrl) {
-
 
         mw_assert(className, "className was not set");
         

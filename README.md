@@ -270,18 +270,22 @@ All commands that are sent from server to clients:
 
 ## Startup
 
-The order of event going down the table:
+The order of events going down the table:
 
-| To Server     | To Client                                              |
-| ------------- | ------------------------------------------------------ |
-| ws connect    |                                                        |
-|               | initiate - gets client id, adds models                 |
-| initiate      |                                                        |
-|               | advertise - array of subscriptions, save local list    |
-|               | makes and subscribes
-| get           |
+| To Server             | To Client                                    |
+|-----------------------|----------------------------------------------|
+| webScocket connect    |                                              |
+|                       | initiate - gets client id, then loads models |
 
 
+## Creating or Connecting to a Subrcription
+
+The order of events going down the table:
+
+| To Server             | To Client                                    |
+|-----------------------|----------------------------------------------|
+| 'get'                 |                                              |
+|                       | 
 
 
 
