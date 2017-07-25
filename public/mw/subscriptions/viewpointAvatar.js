@@ -9,12 +9,15 @@
 
     function addAvatar(avatarUrl) {
 
+        console.log("Using Avatar URL: " + avatarUrl);
+
         /* Create a new subscription for each client that calls this.
          * We don't care what this subscription is called, it's just
          * defined by this javaScript code, so it's anonymous. */
         mw.getSubscriptionClass(
+            'user_viewpoint_avatar_class',
             'avatar' /*shortName*/,
-            'user avatar' /*description*/,
+            'user_avatar' /*description*/,
 
             /* Creator initialization of this top level subscription class */
             function() {
@@ -44,7 +47,7 @@
                  * for each client that calls this.  It will depend on the
                  * top level avatarUrl parent subscription. */
                 this.getSubscriptionClass(
-                    'viewpoint_position_xyzRot', /*unique className used to
+                    'viewpoint_position_xyzRot_class', /*unique className used to
                     * define this class of subscription*/
                     'viewpoint_position' /*shortName*/,
                     'user avatar using viewpoint position' /*description*/,
@@ -56,13 +59,15 @@
                         // *this* is the child subscription.
                         // We do not read our own avatar motions.
                         this.unsubscribe();
+                        //this.makeOwner();
 
                         // Get *this* for next function scope
                         var childSubscription = this;
 
                         var vp = mw_getCurrentViewpoint();
-
-                        this.write(vp.position, vp.orientation);
+                        // We don't need to write the initial veiwpoint
+                        // values because it looks like setting the
+                        // 'viewpointChanged' listener does that for us.
 
                         function writerFunc(e) {
                             // send to server and in turn it's
