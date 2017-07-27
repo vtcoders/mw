@@ -167,13 +167,16 @@ function mw_client(
             var sourceId = message.substr(1, idLen);
             var obj = JSON.parse(message.substr(2+idLen));
 
-            mw_assert(subscriptions[sourceId] !== undefined);
+            mw_assert(subscriptions[sourceId] !== undefined,
+                    'subscription with ID=' + sourceId + ' was not found');
             // There is an option to not have a callback to receive
             // the payload with subscriptions[sourceId].readPayload === null.
             if(subscriptions[sourceId].readerFunc)
                 (subscriptions[sourceId].readerFunc)(...obj.args);
             else {
-                debug('no readerFunc was set yet. Saving payload for later');
+                debug('No readerFunc(P=' + sourceId +
+                    ') was set yet. Saving payload for later: ' +
+                        subscriptions[sourceId].readerFunc);
                 // We better be subscribed
                 // save this current subscription state in case we
                 // get a reader set later.
@@ -350,233 +353,162 @@ function mw_client(
     });
 
 
-    // TODO: currently this only adds subscriptions that have a className.
+
+    // We setup subscription objects after the server tells
+    // us about them in the 'advertise' and 'get' subscription
+    // server reply events.  The 2 functions just below:
+    function setUpSubscriptionFromClass(id, name, className, shortName,
+                description, javaScriptUrl)
+    {
+        if(subscriptions[id] !== undefined)
+            // That's okay we know about this subscription already.
+            return; // Do nothing.
+
+        subscriptions[id] = subscriptions[className].copy();
+
+        var s = subscriptions[id];
+
+        s.id = id;
+        s.shortName = shortName;
+
+        if(s.isSubscribed) {
+            // reset subscribe
+            s.isSubscribed = false;
+            s.subscribe();
+        }
+
+        printSubscriptions();
+    }
+
+
+
+    // Learn of an existing subscription on the server.  We are
+    // not the subscription creator in this case.  This is NOT
+    // in reply from a request from this client.
+    //
+    // TODO: currently this only learns about subscriptions that have a
+    // className.
     on('advertise', function(id, name, className, shortName,
                 description, javaScriptUrl) {
 
         mw_assert(className, "'advertise' className was not set");
         
-        // Construct a subscription object for this particular instance of
-        // a class of subscription.
-        var s = subscriptions[id] = subscriptions[className].copy();
-
-        mw_assert(subscriptions[id] === undefined,
-            '"advertise" for a known subscription: shortName=' + shortName); 
-            
         // TODO: add additional javaScript loading for the subscription
 
         if(subscriptions[className] === undefined) {
-            // Save this for later
-            advertisements[className] = id;
+            if(advertisements[className] === undefined)
+                advertisements[className] = [];
+            // Save this for later after some javaScript is loaded?
+            advertisements[className].push([].slice.call(arguments));
             return;
         }
 
-        subscriptionInit(id, className/*clientKey*/, name,
-                className, shortName);
+        setUpSubscriptionFromClass(id, name, className, shortName,
+                description, javaScriptUrl);
     });
 
 
+
     // Called on server respond to clients 'get' request emit('get', ...)
+    // We may or may not be the subscription creator in this case.
+    // This is in reply to a client 'get' request.
     on('get', function(id, clientKey, name, className,
                 shortName, thisClientIsCreator) {
 
         mw_assert(subscriptions[clientKey] !== undefined, '');
 
-        var s = subscriptions[clientKey];
+        if(name) {
+            // There will be no more new subscriptions with this name or
+            // clientKey, so we do not need this record any more.
+            // subscriptions with a 'name' only get created once.
+            mw_assert(name !== clientKey,
+                    "Bad clientKey ('" + clientKey + "') subscription");
+            // Swap the key for this subscription to use the id from
+            // the server.
+            var s = subscriptions[id] = subscriptions[clientKey];
+            // We don't need this additional reference to this any more.
+            delete subscriptions[clientKey];
+        } else {
+            mw_assert(clientKey === className, '');
+            // This is a new subscription from a subscription class
+            // so we keep the subscription class and copy it.
+            // One copy is for all subscriptions in the class and one [id]
+            // is active.
+            subscriptions[id] = subscriptions[clientKey].copy();
+            var s = subscriptions[id];
+        }
 
-        
+        s.shortName = shortName;
+        s.id = id;
+
         if(thisClientIsCreator && s.creatorFunc) {
+            // We could not do this before the server replied because we
+            // did not know if we are the creator of this subscription, at
+            // least for the case of "named" subscriptions.
+            //
             // If a creator function is set, we call it as an object
             // subscription method.  It can call any of the subscription
             // object methods that we set above.
             s.creatorFunc();
         }
 
-        // don't need the creator any more.
+        // We don't need the subscription creator callback any more.
         delete s.creatorFunc;
 
-        subscriptionInit(id, clientKey, name, className, shortName);
-    });
+        if(advertisements[className] !== undefined) {
+            // We got other subscriptions of this class before now
+            // in an 'advertise' from the server
+            advertisements[className].forEach(function(args) {
 
-
-    // getting a subscription in response to a 'get' new or old
-    // Subscription request from this client, or in response to a
-    // 'subscribe'.
-    function subscriptionInit(id, clientKey, name, className, shortName) {
-
-        debug('getting new subscription: ' + shortName);
-
-        if(name) {
-            // There will be no more new subscriptions with this name or
-            // clientKey, so we do not need this record any more.
-            // subscriptions with a 'name' only get created once.
-            mw_assert(name === clientKey,
-                    "Bad clientKey ('" + clientKeyto + "') subscription");
-            var s = subscriptions[id] = subscriptions[clientKey];
-            // We don't need this additional reference to this any more.
-            delete subscriptions[clientKey];
-        } else
-            // This is a new subscription from a subscription class
-            // so we keep the subscription class and copy it.
-            // One copy is for all in the class and one [id] is active.
-            var s = subscriptions[id] = subscriptions[clientKey].copy();
-
-        // TODO: determine if we need this id in this object.
-        //s.id = id; // save the server subscription ID
-
-        s.shortName = shortName; // The server will change the shortName
-        // making it more unique by appending a counter or like thing.
-
-        function send(payload) {
-            // 'P' is for payload, a magic constant
-            ws.send('P' + id + '=' + JSON.stringify({ args: payload }));
+                setUpSubscriptionFromClass(...args);
+            });
+            delete advertisements[className];
         }
 
-        //
-        // Note: by keeping the network protocol simple we end up
-        // buffering more state in order to keep things consistent.
-        //
-
-
-        if(s.writePayload !== null)
-            // We have a write buffered from the creator function being
-            // called.
-            send(s.writePayload);
-
-        delete s.writePayload; // this buffer has been used up
-
-        // Now we can really send data instead of just buffering it, so we
-        // set the write() function to one that really writes to the web
-        // socket.
-        s.write = function() {
-            send([].slice.call(arguments));
-        };
-
-        s.subscribe = function() {
-
-            if(s.isSubscribed) return;
-            emit('subscribe', id);
-            s.isSubscribed = true;
-            s.readerFunc = s.readerFunc_save;
-            if(s.readerFunc && s.readPayload !== undefined) {
-                s.readerFunc(...(s.readPayload.args));
-                delete s.readPayload;
-            }
-
-        };
-
-        s.unsubscribe = function() {
-
-            if(!s.isSubscribed) return;
-            emit('unsubscribe', id);
-            s.isSubscribed = false;
-            s.readerFunc_save = s.readerFunc;
-            s.readerFunc = null;
-            if(s.readPayload !== undefined) {
-                delete s.readPayload;
-            }
-        };
-
-        s.destory = function() {
-
-            emit('destroy', id);
-            // We'll get a reply that will make us
-            // cleanup this subscription later.
-        };
-
-        s.makeOwner = function(isOwner=true) {
-
-            if(s.isOwner != isOwner) {
-                s.isOwner = isOwner;
-                emit('makeOwner', id, isOwner);
-            }
-        }
-
-        if(!s.isSubscribed) {
-            // We are subscribed by default, so we reset
-            s.isSubscribed = true;
-            // and then unset via the method.
-            s.unsubscribe();
-            // Now s.isSubscribed should be false
-        }
-        if(s.isOwner) {
-            // We are not owners by default, so we reset
-            s.isOwner = false;
-            // and then set via the method.
-            s.makeOwner();
-            // Now s.isOwner should be true
-        }
-        if(s.isDestroyed)
-            // This may happen because there may have been a change of
-            // heart in the creator callback function.
-            s.destory();
-
-        // isInitialized means that we can subscribe to it now and it can
-        // be read and written too on the server; a real usable
-        // subscription and not just a subscription class or named
-        // subscription waiting to exist on the server.
-        s.isInitialized = true;
-
-        if(s.isDestroyed) {
-            delete s.isDestroyed; // destroy is now no longer a buffered thing
-            printSubscriptions(); // debug printing
-        }
-
-        s.setReader = function(readerFunc) {
-            s.readerFunc_save = readerFunc;
-            if(s.isSubscribed)
-                s.readerFunc = readerFunc;
-            if(s.readerFunc && s.readPayload) {
-                s.readerFunc(...(s.readPayload.args));
-                delete s.readPayload;
-            }
-        }
-
-
-        // Now we know what the subscription is to this client
-        if(s.isSubscribed) {
-
-            s.readerFunc = s.readerFunc_save;
-            if(s.readerFunc && s.readPayload) {
-                s.readerFunc(...(s.readPayload.args));
-            }
-        }
-
-        if(s.readPayload)
-            delete s.readPayload;
-
-
-        delete s.isDestroyed; // destroy is now no longer a buffered thing
         printSubscriptions(); // debug printing
-    }
-
+    });
 
 
     // A private factory that returns subscription objects.  These objects
     // returned will not have an associated subscription ID on the server.
+    // They are not initialized for use.
     function newSubscription(
             name, className,
             shortName, description,
-            creatorFunc, readerFunc, cleanupFunc) {
+            creatorFunc, readerFunc, cleanupFunc, haveParent=false) {
 
         mw_assert((name && name.length > 0) ||
                 (className && className.length > 0),
                 'neither name or className are set');
+
         mw_assert(!name || !className,
                 'both name and className are set');
+
+        var lname = name?name:className;
+
+        if(!haveParent)
+            // name and className may not have a '/' in it.
+            mw_assert(lname.indexOf('/') === -1,
+                "name or className (" + lname + ") has a '/' in it.");
+
+        // If these 2 default values change you need to
+        // change other stuff.
+        var defaults = {
+            isOwner: false,
+            isSubscribed: true
+        };
 
 
         // make a subscription object explicitly
         var subscription = {
+            id: null,
+
+            isSubscribed: defaults.isSubscribed,
+            isOwner: defaults.isOwner,
+
             children: [],
-            parent: null,
+            parenT: null,
 
-            // If these 2 default values change you need to
-            // change subscriptionInit().
-            isSubscribed: true, // We are subscribed by default.
-            isOwner: false, // default we are not owners
-
-            isInitialized: false,
             name: name,
             className: className,
             shortName: shortName,
@@ -584,82 +516,137 @@ function mw_client(
             readerFunc: null,
             readerFunc_save: readerFunc,
             cleanupFunc: cleanupFunc,
+            // We buffer incoming payloads if we get some
+            // while we are not ready to read.
+            readPayload: null,
 
             // copy() returns a copy of this object.
             // var obj2 = obj1 does not work, obj2 is a reference
             // to obj1 and so changing obj2 fields changes obj1
-            // fields.
+            // fields.; so we may make subscriptions for a
+            // subscription class.
+            // TODO: Currently just used to copy a subjection
+            // that is a subscription class
             copy: function() {
+                mw_assert(!this.id && className, '');
                 var ret = {};
                 // copy just one level deep
+                // TODO: if objects get deeper we need
+                // to add more code here.
                 for(var k in this)
                     ret[k] = this[k];
-                ret.isInitialized = false;
+                for(var k in defaults)
+                    ret[k] = defaults[k];
+                // Do not share the children
+                ret.children = [];
                 return ret;
             },
             subscribe: function() {
+                mw_assert(this.id, 'not initialized');
+                if(this.isSubscribed) return;
+                emit('subscribe', this.id);
                 this.isSubscribed = true;
+                this.readerFunc = this.readerFunc_save;
+                if(this.readPayload && this.readerFunc) {
+                    this.readerFunc(readPayload);
+                    readPayload = null;
+                }
             },
-            isDestroyed: false,
             destroy: function() {
-                // For now we buffer this value.
-                this.isDestroyed = true;
+                mw_assert(this.id, 'not initialized');
+                emit('destroy', this.id);
             },
             unsubscribe: function() {
+                mw_assert(this.id, 'not initialized');
+                if(!this.isSubscribed) return;
+                emit('unsubscribe', this.id);
                 this.isSubscribed = false;
+                this.readerFunc = null;
             },
-            writePayload: null, // buffers subscription state
-            // until the subscription is confirmed to be on the server
-            // and for when the readerFunc is not set yet.
             write: function() {
-                // Save (buffer) the last payload written:
-                this.writePayload = [].slice.call(arguments);
-                // We'll make this write to the webSocket
-                // after we get the subscription from
-                // the server.
+                mw_assert(this.id, '');
+                ws.send('P' + this.id + '=' +
+                    JSON.stringify({ args: [].slice.call(arguments)}));
+                // We do not use the readerFunc until this comes back from
+                // the server.  That will keep the subscription
+                // consistent payload with all clients.
             },
             // make this WebSocket client an owner
             makeOwner: function(isOwner=true) {
+                mw_assert(this.id, 'not initialized');
+                if(this.isOwner === isOwner) return;
+                emit('makeOwner', this.id, isOwner);
                 this.isOwner = isOwner;
-            },
-            getSubscriptionClass:
-                function(className, shortName, description,
-                        creatorFunc, readerFunc=null, cleanupFunc=null) {
-                    var child = newSubscription(null, className, shortName,
-                            description, creatorFunc, readerFunc, cleanupFunc);
-                    this.children.push(child);
-                    child.parent = this;
             },
             getSubscription:
                 function(name, shortName, description,
                         creatorFunc, readerFunc=null, cleanupFunc=null) {
-                    var child = newSubscription(name, null, shortName,
-                            description, creatorFunc, readerFunc, cleanupFunc);
+                    mw_assert(this.id, 'not initialized');
+                    mw_assert(name.indexOf('/') === -1,
+                        "name (" + name + ") has a '/' in it.");
+                    var child = newSubscription(this.id + '/' + name,
+                            null, shortName, description,
+                            creatorFunc, readerFunc, cleanupFunc,
+                            true/*have Parent*/);
                     this.children.push(child);
-                    child.parent = this;
+                    child.parenT = this;
+                    // TODO: add more parent child subscription relations
             },
-            // save a new reader callback function
+            getSubscriptionClass:
+                function(className, shortName, description,
+                        creatorFunc, readerFunc=null, cleanupFunc=null) {
+                    mw_assert(this.id, 'not initialized');
+                    mw_assert(className.indexOf('/') === -1,
+                        "className (" + className + ") has a '/' in it.");
+                    var child = newSubscription(null,
+                            className, shortName, description,
+                            creatorFunc, readerFunc, cleanupFunc,
+                            true/*have Parent*/);
+                    this.children.push(child);
+                    child.parenT = this;
+                    // TODO: add more parent child subscription relations
+            },
+
+            // Set a new reader callback function
             setReader: function(readerFunc) {
+                mw_assert(this.id, 'not initialized id=' + this.id);
+                // This will be the read function if we subscribe
                 this.readerFunc_save = readerFunc;
+                if(this.isSubscribed) {
+                    this.readFunc = readerFunc;
+                    if(this.readPayload && readerFunc) {
+                        this.readerFunc(this.readPayload);
+                        this.readPayload = null;
+                    }
+                }
+                console.log('\n\n\n subscription ID=' + this.id +
+                        '  readerFunc set to: ' + readerFunc + '\n\n');
             },
             setCleanup: function(cleanupFunc) {
+                mw_assert(this.id, 'not initialized');
                 this.cleanupFunc = cleanupFunc;
             }
         };
 
-        // Make a key to store the subscription on this client
+        ++getSubscriptionCount;
+
+        // Make a key to store the subscription on this client for
+        // until the server sends us an id via 'get' reply
         if(name)
-            var clientKey = ' k-e- yZ' + (++getSubscriptionCount).toString();
+            // TODO: confirm this is a unique key for object subscriptions
+            // by just looping until it is.  Unlikely it is not...
+            var clientKey = ' k-e- yZ' + getSubscriptionCount.toString();
         else
             var clientKey = className;
 
-
-        // Talk to the server
-        emit('get', clientKey, name, className, shortName, description,
-                subscription.isSubscribed, subscription.isOwner);
-
         // Add it to the list of subscriptions:
         subscriptions[clientKey] = subscription;
+
+
+        // Talk to the server.
+        // We get a 'get' response with a subscription ID later.
+        emit('get', clientKey, name, className, shortName, description,
+                subscription.isSubscribed, subscription.isOwner);
 
         return subscription;
     }
@@ -672,7 +659,7 @@ function mw_client(
             shortName, description,
             creatorFunc=null, readerFunc=null, cleanupFunc=null) {
 
-        return newSubscription(
+        newSubscription(
                 name, null, shortName, description,
                 creatorFunc, readerFunc, cleanupFunc);
     };
@@ -690,7 +677,7 @@ function mw_client(
             shortName, description,
             creatorFunc=null, readerFunc=null, cleanupFunc=null) {
 
-        return newSubscription(
+        newSubscription(
                 null, className, shortName, description,
                 creatorFunc, readerFunc, cleanupFunc);
     };
@@ -698,36 +685,33 @@ function mw_client(
 
     // This function just spews for debugging and does nothing
     // else.
-    function printSubscriptions() {
+    var printSubscriptions = 
+    mw.print = function() {
 
         debug('Subscriptions:');
         console.log('=========== Current Subscriptions =================');
 
         for(var key in subscriptions) {
             var s = subscriptions[key];
-            if(s.isInitialized)
-                console.log('   [' + key + '] shortName=' +
+            if(s.id)
+                console.log('   [' + s.id + '] shortName=' +
                     s.shortName + ' ---  ' +
-                    (s.subscribed?'SUBSCRIBED ':'') +
+                    (s.isSubscribed?'SUBSCRIBED ':'') +
                     (s.isOwner?'OWNER ':'') +
                     (s.name?('name=' +s.name):('className=' + s.className)));
         }
 
-        console.log('=========== Unintialized Subscriptions ============');
+        console.log('=========== Subscription Classes ============');
 
         for(var key in subscriptions) {
             var s = subscriptions[key];
-            if(!s.isInitialized)
+            if(!s.id)
                 console.log('   [' + key + '] shortName=' +
-                    s.shortName + ' ---  ' +
-                    (s.subscribed?'SUBSCRIBED ':'') +
-                    (s.isOwner?'OWNER ':'') +
-                    (s.name?('name=' +s.name):('className=' + s.className)));
+                    s.shortName);
         }
 
         console.log('====================================================')
-
-    }
+    };
 
     return mw;
 }

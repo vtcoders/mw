@@ -15,11 +15,14 @@
          * We don't care what this subscription is called, it's just
          * defined by this javaScript code, so it's anonymous. */
         mw.getSubscriptionClass(
-            'user_viewpoint_avatar_class',
+            'user_viewpoint_avatar'/*unique class name*/,
             'avatar' /*shortName*/,
             'user_avatar' /*description*/,
 
-            /* Creator initialization of this top level subscription class */
+            /* Creator initialization of this top level subscription class.
+             * This is called each time a new subscription of this class
+             * is created.  Each client that runs this javaScript will
+             * run this creator funtion. */
             function() {
 
                 // *this* is the subscription.
@@ -47,11 +50,9 @@
                  * for each client that calls this.  It will depend on the
                  * top level avatarUrl parent subscription. */
                 this.getSubscriptionClass(
-                    'viewpoint_position_xyzRot_class', /*unique className used to
-                    * define this class of subscription*/
-                    'viewpoint_position' /*shortName*/,
+                    'viewpoint_avatar_position'/*unique class name*/,
+                    'viewpoint_avatar_position' /*shortName*/,
                     'user avatar using viewpoint position' /*description*/,
-
 
                     /* child creator */
                     function() {
@@ -59,7 +60,9 @@
                         // *this* is the child subscription.
                         // We do not read our own avatar motions.
                         this.unsubscribe();
-                        //this.makeOwner();
+                        // When this client goes away this subscription
+                        // is destroyed on the server.
+                        this.makeOwner();
 
                         // Get *this* for next function scope
                         var childSubscription = this;
@@ -119,7 +122,21 @@
 
                     function(transformNode) {
 
-                        var child = subscription.firstChild;
+                        console.log('\n\n\nFUCK YOU\nchildren[' + subscription.children + ']\n\n\n');
+
+                        // TODO: find a better way to get child subscriptions
+                        var child = subscription.children[0];
+                        
+
+
+                        console.log('\n\n ++++++++++++++++ \n\n child.id=' + child.id +
+                                '\n\nchild.checkD=' + child.checkD +
+                                '\n\nchildren=' + subscription.children +
+                                '\n\n' + ' parent subscription.id=' + subscription.id);
+
+
+                        mw.print()
+
                         // Save the top model node in case we need to
                         // change the avatar.
 
@@ -138,6 +155,7 @@
                                 rot[0].x + ' ' + rot[0].y + ' ' +
                                 rot[0].z + ' ' + rot[1]);
                         });
+
 
                         // Sets a cleanup function for a particular
                         // subscription, otherwise the model will stay and
