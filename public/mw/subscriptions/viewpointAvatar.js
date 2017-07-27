@@ -122,7 +122,7 @@
 
                     function(transformNode) {
 
-                        console.log('\n\n\nFUCK YOU\nchildren[' + subscription.children + ']\n\n\n');
+                        console.log('\n\nchildren[' + subscription.children + ']\n\n\n');
 
                         // TODO: find a better way to get child subscriptions
                         var child = subscription.children[0];
