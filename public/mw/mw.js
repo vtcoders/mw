@@ -1,6 +1,4 @@
-// This file is sourced from world.html
-// This is the first Mirror Worlds javaScript
-// file that is loaded by the browser client.
+    console.log('HELLO');
 
 
 // one stinking global object
@@ -357,19 +355,18 @@ function mw_client(
     // We setup subscription objects after the server tells
     // us about them in the 'advertise' and 'get' subscription
     // server reply events.  The 2 functions just below:
-    function setUpSubscriptionFromClass(id, name, className, shortName,
-                description, javaScriptUrl)
+    function setUpSubscriptionFromClass(x)
     {
-        if(subscriptions[id] !== undefined)
+        if(subscriptions[x.id] !== undefined)
             // That's okay we know about this subscription already.
             return; // Do nothing.
 
-        subscriptions[id] = subscriptions[className].copy();
+        subscriptions[x.id] = subscriptions[x.className].copy(x.parentId);
 
-        var s = subscriptions[id];
+        var s = subscriptions[x.id];
 
-        s.id = id;
-        s.shortName = shortName;
+        s.id = x.id;
+        s.shortName = x.shortName;
 
         if(s.isSubscribed) {
             // reset subscribe
@@ -388,23 +385,22 @@ function mw_client(
     //
     // TODO: currently this only learns about subscriptions that have a
     // className.
-    on('advertise', function(id, name, className, shortName,
-                description, javaScriptUrl) {
+    on('advertise', function(ads) {
 
-        mw_assert(className, "'advertise' className was not set");
+        ads.forEach(function(x) {
+
+            mw_assert(x && x.className, "'advertise' className was not set");
         
-        // TODO: add additional javaScript loading for the subscription
+            // TODO: add additional javaScript loading for the subscription
 
-        if(subscriptions[className] === undefined) {
-            if(advertisements[className] === undefined)
-                advertisements[className] = [];
-            // Save this for later after some javaScript is loaded?
-            advertisements[className].push([].slice.call(arguments));
-            return;
-        }
-
-        setUpSubscriptionFromClass(id, name, className, shortName,
-                description, javaScriptUrl);
+            if(subscriptions[x.className] === undefined) {
+                if(advertisements[x.className] === undefined)
+                    advertisements[x.className] = [];
+                // Save this for later after some javaScript is loaded?
+                advertisements[x.className].push(x);
+            } else
+                setUpSubscriptionFromClass(x);
+        });
     });
 
 
@@ -422,34 +418,44 @@ function mw_client(
             // clientKey, so we do not need this record any more.
             // subscriptions with a 'name' only get created once.
             mw_assert(name !== clientKey,
-                    "Bad clientKey ('" + clientKey + "') subscription");
+                "Bad clientKey ('" + clientKey + "') subscription");
             // Swap the key for this subscription to use the id from
             // the server.
             var s = subscriptions[id] = subscriptions[clientKey];
             // We don't need this additional reference to this any more.
             delete subscriptions[clientKey];
         } else {
-            mw_assert(clientKey === className, '');
+            mw_assert(clientKey === className);
             // This is a new subscription from a subscription class
             // so we keep the subscription class and copy it.
             // One copy is for all subscriptions in the class and one [id]
             // is active.
+            console.log("FUCK");
             subscriptions[id] = subscriptions[clientKey].copy();
+            console.log("FUCK");
             var s = subscriptions[id];
         }
 
         s.shortName = shortName;
         s.id = id;
 
-        if(thisClientIsCreator && s.creatorFunc) {
-            // We could not do this before the server replied because we
-            // did not know if we are the creator of this subscription, at
-            // least for the case of "named" subscriptions.
-            //
-            // If a creator function is set, we call it as an object
-            // subscription method.  It can call any of the subscription
-            // object methods that we set above.
-            s.creatorFunc();
+        if(thisClientIsCreator) {
+            if(s.creatorFunc)
+                // We could not do this before the server replied because we
+                // did not know if we are the creator of this subscription, at
+                // least for the case of "named" subscriptions.
+                //
+                // If a creator function is set, we call it as an object
+                // subscription method.  It can call any of the subscription
+                // object methods that we set above.
+                s.creatorFunc();
+            // This object as the one that could have ran the constructor
+            // for this distributed subscription thingy so it will have
+            // the list of child and parent subscriptions, or call it the
+            // family tree.
+            //if(!name)
+                // Save a pointer to this subscription
+                //subscriptions[clientKey].creator = s;
         }
 
         // We don't need the subscription creator callback any more.
@@ -458,9 +464,9 @@ function mw_client(
         if(advertisements[className] !== undefined) {
             // We got other subscriptions of this class before now
             // in an 'advertise' from the server
-            advertisements[className].forEach(function(args) {
+            advertisements[className].forEach(function(x) {
 
-                setUpSubscriptionFromClass(...args);
+                setUpSubscriptionFromClass(x);
             });
             delete advertisements[className];
         }
@@ -475,7 +481,7 @@ function mw_client(
     function newSubscription(
             name, className,
             shortName, description,
-            creatorFunc, readerFunc, cleanupFunc, haveParent=false) {
+            creatorFunc, readerFunc, cleanupFunc, myParent=null) {
 
         mw_assert((name && name.length > 0) ||
                 (className && className.length > 0),
@@ -486,7 +492,7 @@ function mw_client(
 
         var lname = name?name:className;
 
-        if(!haveParent)
+        if(!myParent)
             // name and className may not have a '/' in it.
             mw_assert(lname.indexOf('/') === -1,
                 "name or className (" + lname + ") has a '/' in it.");
@@ -507,7 +513,7 @@ function mw_client(
             isOwner: defaults.isOwner,
 
             children: [],
-            parenT: null,
+            myParent: myParent, // The word parent is reserved
 
             name: name,
             className: className,
@@ -525,10 +531,10 @@ function mw_client(
             // to obj1 and so changing obj2 fields changes obj1
             // fields.; so we may make subscriptions for a
             // subscription class.
-            // TODO: Currently just used to copy a subjection
+            // TODO: Currently just used to copy a subscription
             // that is a subscription class
-            copy: function() {
-                mw_assert(!this.id && className, '');
+            copy: function(parentId=null) {
+                mw_assert(!this.id && className);
                 var ret = {};
                 // copy just one level deep
                 // TODO: if objects get deeper we need
@@ -539,6 +545,15 @@ function mw_client(
                     ret[k] = defaults[k];
                 // Do not share the children
                 ret.children = [];
+                // Join a family
+                if(!parentId) {
+                    ret.myParent = parentId;
+                } else {
+                    mw_assert(subscriptions[parentId] !== undefined);
+                    var p = subscriptions[parentId];
+                    ret.myParent = p;
+                    p.children.push(ret);
+                }
                 return ret;
             },
             subscribe: function() {
@@ -587,10 +602,9 @@ function mw_client(
                     var child = newSubscription(this.id + '/' + name,
                             null, shortName, description,
                             creatorFunc, readerFunc, cleanupFunc,
-                            true/*have Parent*/);
+                            this/*Parent*/);
                     this.children.push(child);
-                    child.parenT = this;
-                    // TODO: add more parent child subscription relations
+                    child.myParent = this;
             },
             getSubscriptionClass:
                 function(className, shortName, description,
@@ -601,10 +615,9 @@ function mw_client(
                     var child = newSubscription(null,
                             className, shortName, description,
                             creatorFunc, readerFunc, cleanupFunc,
-                            true/*have Parent*/);
+                            this/*Parent*/);
                     this.children.push(child);
-                    child.parenT = this;
-                    // TODO: add more parent child subscription relations
+                    child.myParent = this;
             },
 
             // Set a new reader callback function
@@ -642,11 +655,16 @@ function mw_client(
         // Add it to the list of subscriptions:
         subscriptions[clientKey] = subscription;
 
+        var parentId = myParent ? (myParent.id) : null;
+
 
         // Talk to the server.
         // We get a 'get' response with a subscription ID later.
         emit('get', clientKey, name, className, shortName, description,
-                subscription.isSubscribed, subscription.isOwner);
+                // isSubscribed and isOwner  are just default values but
+                // we only know them from this code.
+                subscription.isSubscribed, subscription.isOwner,
+                parentId);
 
         return subscription;
     }
@@ -685,8 +703,7 @@ function mw_client(
 
     // This function just spews for debugging and does nothing
     // else.
-    var printSubscriptions = 
-    mw.print = function() {
+    function printSubscriptions() {
 
         debug('Subscriptions:');
         console.log('=========== Current Subscriptions =================');
@@ -711,7 +728,7 @@ function mw_client(
         }
 
         console.log('====================================================')
-    };
+    }
 
     return mw;
 }
@@ -740,3 +757,5 @@ function mw_init() {
         mw_addActor(url, null, { mw: mw });
     });
 }
+
+

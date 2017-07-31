@@ -14,7 +14,7 @@ function mw_fail() {
     throw text;
 }
 
-function mw_assert(val, msg) {
+function mw_assert(val, msg=null) {
 
     if(!val) {
         if(msg)
