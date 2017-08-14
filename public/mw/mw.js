@@ -140,7 +140,7 @@ function mw_client(
 
     ws.onmessage = function(e) {
 
-        debug('message:\n     ' + e.data);
+        //debug('message:\n     ' + e.data);
 
         var message = e.data;
         // Look for 'P' the magic constant.
@@ -169,7 +169,8 @@ function mw_client(
                     'subscription with ID=' + sourceId + ' was not found');
             // There is an option to not have a callback to receive
             // the payload with subscriptions[sourceId].readPayload === null.
-            if(subscriptions[sourceId].readerFunc)
+            
+            if(subscriptions[sourceId].readerFunc !== null)
                 (subscriptions[sourceId].readerFunc)(...obj.args);
             else {
                 debug('No readerFunc(P=' + sourceId +
@@ -178,7 +179,7 @@ function mw_client(
                 // We better be subscribed
                 // save this current subscription state in case we
                 // get a reader set later.
-                subscriptions[sourceId].readPayload = obj;
+                subscriptions[sourceId].readPayload = obj.args;
             }
 
             return;
@@ -200,7 +201,7 @@ function mw_client(
                     '" not found for message from ' + url + ':' +
                     '\n  ' + e.data);
 
-        debug('handled message=\n   ' + e.data);
+        debug('handling message=\n   ' + e.data);
 
         // Call the on callback function using array spread syntax.
         //https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Operators/Spread_operator
@@ -258,11 +259,13 @@ function mw_client(
     };
  
 
-    // callbackFunc(avatars) is a function that gets the argument
-    // avatars that is an array of avators that are like for example:
+    // gotAvatarFunc(avatars) is a function that gets the argument
+    // avatars that is an object which has access to the array of
+    // avatars:
     // [ "/mw/avatars/teapot_red.x3d", "/mw/avatars/teapot_blue.x3d"
     // ... ]
-    mw.getAvatars = function(callbackFunc) {
+    mw.getAvatars = function(gotAvatarFunc) {
+
 
         mw_addActor(_mw_getCurrentScriptPrefix() +
             '../mw_popupDialog.css', function() {
@@ -278,14 +281,16 @@ function mw_client(
                     return;
                 }
 
+                var avatarObj = {};
+                
                 // Which avatar do we select from the array of avatars.
                 var avatarIndex = parseInt(clientId)%(avatars.length);
-
                 var button = document.getElementById('select_avatar');
                 if(!button) {
                     button = document.createElement('A');
                     button.href = '#';
-                    button.appendChild(document.createTextNode('Select Avatar'));
+                    button.appendChild(document.createTextNode(
+                            'Select Avatar'));
                     // TODO: could be prettier.
                     document.body.appendChild(button);
                     button.title = 'change avatar';
@@ -294,13 +299,13 @@ function mw_client(
                 button.onclick = function(e) {
 
                     var div = document.createElement('div');
-                    var innerHTML =
-                        '<h2>Select an Avatar</h2>\n' +
-                        '<select>\n';
+                    var h2 = document.createElement('h2');
+                    h2.innerHTML = 'Select an Avatar';
+                    div.appendChild(h2);
+                    var select = document.createElement('select');
+                    var innerHTML = '';
 
-                    var i;
-
-                    for(i=0;i<avatars.length;++i) {
+                    for(var i=0;i<avatars.length;++i) {
                         innerHTML +=
                             '<option value="' + avatars[i] + '"';
                         if(i === avatarIndex)
@@ -311,17 +316,27 @@ function mw_client(
                             '</option>\n';
                     }
 
-                    innerHTML +='  </select>\n';
-
-                    div.innerHTML = innerHTML;
-
-                    mw_addPopupDialog(div, button);
+                    select.innerHTML = innerHTML;
+                    div.appendChild(select);
+                    mw_addPopupDialog(div, button, function() {
+                        // On "Ok" callback function
+                        if(avatarIndex !== select.selectedIndex) {
+                            avatarIndex = select.selectedIndex;
+                            avatarObj.url = avatars[avatarIndex];
+                            if(avatarObj.onChange)
+                                avatarObj.onChange(avatars[avatarIndex]);
+                        }
+                    });
                 };
 
-                // Call the users callback with the array of avatars.
+                // Call the users  gotAvatarFunc() callback with the
+                // avatar object.
                 debug("avatars=" + avatars +
                     " my avatar=" + avatars[avatarIndex]);
-                callbackFunc(avatars, avatarIndex);
+
+                avatarObj.url = avatars[avatarIndex];
+                avatarObj.onChange = null;
+                gotAvatarFunc(avatarObj);
 
             }); // mw.glob('/mw/avatars/*.x3d',...)
 
@@ -333,7 +348,7 @@ function mw_client(
     // the server is destroying a subscription
     on('destroy', function(id) {
 
-        var s = subscription[id];
+        var s = subscriptions[id];
 
         if(s === undefined) {
 
@@ -346,8 +361,8 @@ function mw_client(
 
         if(s.cleanupFunc)
             s.cleanupFunc();
-
-        delete subscription[id];
+        delete subscriptions[id];
+        printSubscriptions();
     });
 
 
@@ -361,18 +376,8 @@ function mw_client(
             // That's okay we know about this subscription already.
             return; // Do nothing.
 
-        subscriptions[x.id] = subscriptions[x.className].copy(x.parentId);
-
-        var s = subscriptions[x.id];
-
-        s.id = x.id;
-        s.shortName = x.shortName;
-
-        if(s.isSubscribed) {
-            // reset subscribe
-            s.isSubscribed = false;
-            s.subscribe();
-        }
+        subscriptions[x.id] = subscriptions[x.className].
+            copy(x.parentId, x.id, x.shortName);
 
         printSubscriptions();
     }
@@ -387,7 +392,9 @@ function mw_client(
     // className.
     on('advertise', function(ads) {
 
-        ads.forEach(function(x) {
+        for (var i = 0, len = ads.length; i < len; i++) {
+
+            var x = ads[i];
 
             mw_assert(x && x.className, "'advertise' className was not set");
         
@@ -397,10 +404,11 @@ function mw_client(
                 if(advertisements[x.className] === undefined)
                     advertisements[x.className] = [];
                 // Save this for later after some javaScript is loaded?
+                debug('Will save this "advertise" for later');
                 advertisements[x.className].push(x);
             } else
                 setUpSubscriptionFromClass(x);
-        });
+        }
     });
 
 
@@ -424,20 +432,19 @@ function mw_client(
             var s = subscriptions[id] = subscriptions[clientKey];
             // We don't need this additional reference to this any more.
             delete subscriptions[clientKey];
+            s.shortName = shortName;
+            s.id = id;
         } else {
             mw_assert(clientKey === className);
             // This is a new subscription from a subscription class
             // so we keep the subscription class and copy it.
             // One copy is for all subscriptions in the class and one [id]
             // is active.
-            console.log("FUCK");
-            subscriptions[id] = subscriptions[clientKey].copy();
-            console.log("FUCK");
+            subscriptions[id] = subscriptions[clientKey].
+                copy(null/*no parentId*/, id, shortName);
             var s = subscriptions[id];
         }
 
-        s.shortName = shortName;
-        s.id = id;
 
         if(thisClientIsCreator) {
             if(s.creatorFunc)
@@ -468,6 +475,7 @@ function mw_client(
 
                 setUpSubscriptionFromClass(x);
             });
+
             delete advertisements[className];
         }
 
@@ -522,8 +530,14 @@ function mw_client(
             readerFunc: null,
             readerFunc_save: readerFunc,
             cleanupFunc: cleanupFunc,
+
+            // We buffer the writes to this subscription
+            // until we have a subscription ID.
+            writePayload: null,
+
             // We buffer incoming payloads if we get some
-            // while we are not ready to read.
+            // while we are not ready to read, and have
+            // a subscription ID.
             readPayload: null,
 
             // copy() returns a copy of this object.
@@ -533,43 +547,62 @@ function mw_client(
             // subscription class.
             // TODO: Currently just used to copy a subscription
             // that is a subscription class
-            copy: function(parentId=null) {
+            copy: function(parentId=null, id, shortName) {
                 mw_assert(!this.id && className);
-                var ret = {};
+                var s = {};
                 // copy just one level deep
                 // TODO: if objects get deeper we need
                 // to add more code here.
                 for(var k in this)
-                    ret[k] = this[k];
+                    s[k] = this[k];
                 for(var k in defaults)
-                    ret[k] = defaults[k];
-                // Do not share the children
-                ret.children = [];
-                // Join a family
+                    s[k] = defaults[k];
+                // Do not share the children.  We are told
+                // who our parent is.
+                s.children = [];
+                // Join a family or not.
                 if(!parentId) {
-                    ret.myParent = parentId;
+                    s.myParent = parentId;
                 } else {
                     mw_assert(subscriptions[parentId] !== undefined);
                     var p = subscriptions[parentId];
-                    ret.myParent = p;
-                    p.children.push(ret);
+                    s.myParent = p;
+                    p.children.push(s);
                 }
-                return ret;
+
+                s.id = id;
+                s.shortName = shortName;
+                if(s.isSubscribed) {
+                    // reset subscribe to the default
+                    s.isSubscribed = false;
+                    s.subscribe();
+                    // now s.isSubscribed === true
+                }
+                this.write = function() {
+                    ws.send('P' + this.id + '=' +
+                        JSON.stringify(
+                            { args: [].slice.call(arguments)}));
+                };
+                return s;
             },
             subscribe: function() {
-                mw_assert(this.id, 'not initialized');
+                mw_assert(this.id, 'subscription not initialized locally');
                 if(this.isSubscribed) return;
                 emit('subscribe', this.id);
                 this.isSubscribed = true;
                 this.readerFunc = this.readerFunc_save;
+                debug('\n\n\n\n id=' + this.id +
+                    ' Setting subscribed readerFunc=' +
+                    this.readerFunc + '\n\n\n');
                 if(this.readPayload && this.readerFunc) {
-                    this.readerFunc(readPayload);
+                    this.readerFunc(...(this.readPayload));
                     readPayload = null;
                 }
             },
             destroy: function() {
                 mw_assert(this.id, 'not initialized');
                 emit('destroy', this.id);
+
             },
             unsubscribe: function() {
                 mw_assert(this.id, 'not initialized');
@@ -626,9 +659,12 @@ function mw_client(
                 // This will be the read function if we subscribe
                 this.readerFunc_save = readerFunc;
                 if(this.isSubscribed) {
-                    this.readFunc = readerFunc;
-                    if(this.readPayload && readerFunc) {
-                        this.readerFunc(this.readPayload);
+                    this.readerFunc = readerFunc;
+                    debug('\n\n\nid='+this.id+
+                        '  this.readPayload=='+ this.readPayload + '\n\n\n');
+
+                    if(this.readPayload && readerFunc !== null) {
+                        this.readerFunc(...(this.readPayload));
                         this.readPayload = null;
                     }
                 }
@@ -651,6 +687,10 @@ function mw_client(
             var clientKey = ' k-e- yZ' + getSubscriptionCount.toString();
         else
             var clientKey = className;
+
+        if(subscription.isSubscribed)
+            // if is set by default
+            subscription.readerFunc = readerFunc;
 
         // Add it to the list of subscriptions:
         subscriptions[clientKey] = subscription;

@@ -1,15 +1,22 @@
+// This makes a simple viewpoint avatar for all users (clients) that load
+// this javaScript file.  This makes two interdependent subscription
+// classes.  The two subscription classes that contain the payloads that
+// are:
+//
+//   1) the avatar URL as a string
+//   2) the avatar position and orientation
+//
+// The subscription (2) is a child of (1).
+//
 
 (function () {
 
     var mw = mw_getScriptOptions().mw;
 
-    // avatars will be an array of all available avatar URLs
-    var avatars = null;
 
+    function addAvatar(avatar) {
 
-    function addAvatar(avatarUrl) {
-
-        console.log("Using Avatar URL: " + avatarUrl);
+        console.log("Using Avatar URL: " + avatar.url);
 
         /* Create a new subscription for each client that calls this.
          * We don't care what this subscription is called, it's just
@@ -22,7 +29,7 @@
             /* Creator initialization of this top level subscription class.
              * This is called each time a new subscription of this class
              * is created.  Each client that runs this javaScript will
-             * run this creator funtion. */
+             * run this creator function. */
             function() {
 
                 // *this* is the subscription.
@@ -102,7 +109,13 @@
                     // subscription class yet
                 );
 
-                this.write(avatarUrl);
+                this.write(avatar.url);
+
+                var subObj = this;
+
+                avatar.onChange = function(avatarUrl) {
+                    subObj.write(avatarUrl);
+                };
             },
 
             /* particular consumer (reader) of this top level subscription
@@ -110,32 +123,27 @@
              * particular subscription of this class. */
             function(avatarUrl) {
 
-                if(this.TransformNode !== undefined)
+                var pos = null, rot;
+
+                if(this.TransformNode !== undefined) {
                     // If we are changing the avatar URL: remove the old
                     // model and than add a new model.
-                    this.TransformNode.parentNode.removeChild(transformNode);
+                    // First copy the old avatar position and orientation
+                    // so we can put the new one there.
+                    pos = this.TransformNode.getAttribute('translation');
+                    rot = this.TransformNode.getAttribute('rotation');
+                    this.TransformNode.parentNode.removeChild(this.TransformNode);
+                }
 
-                // Get *this* for next function scope
+                // Get *this* for up-coming function scope
                 var subscription = this;
 
                 mw_addActor(avatarUrl,
 
                     function(transformNode) {
 
-                        console.log('\n\nchildren[' + subscription.children + ']\n\n\n');
-
                         // TODO: find a better way to get child subscriptions
                         var child = subscription.children[0];
-                        
-
-
-                        console.log('\n\n ++++++++++++++++ \n\n child.id=' + child.id +
-                                '\n\nchild.checkD=' + child.checkD +
-                                '\n\nchildren=' + subscription.children +
-                                '\n\n' + ' parent subscription.id=' + subscription.id);
-
-
-                        mw.print()
 
                         // Save the top model node in case we need to
                         // change the avatar.
@@ -166,6 +174,15 @@
                             transformNode.parentNode.removeChild(transformNode);
                         });
 
+                        if(pos) {
+                            // We are changing avatars so we need to
+                            // remember where to put the avatar.
+                            transformNode.setAttribute('translation', pos);
+                            transformNode.setAttribute('rotation', rot);
+                            pos = null;
+                            rot = null;
+                        }
+
                     }, {
                         containerNodeType: 'Transform'
                 });
@@ -177,13 +194,10 @@
     }
 
 
-    mw.getAvatars(function(avatars_, avatarIndex) {
+    mw.getAvatars(function(avatar) {
 
-        avatars = avatars_; // save array of avatars
-
-        // Load an avatar from this array list
-        addAvatar(avatars[avatarIndex]);
-
+        // Load an avatar from this "avatar" object.
+        addAvatar(avatar);
     });
 
 })();
