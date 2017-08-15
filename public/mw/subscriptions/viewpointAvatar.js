@@ -3,7 +3,7 @@
 // classes.  The two subscription classes that contain the payloads that
 // are:
 //
-//   1) the avatar URL as a string
+//   1) the avatar URL
 //   2) the avatar position and orientation
 //
 // The subscription (2) is a child of (1).
@@ -22,9 +22,9 @@
          * We don't care what this subscription is called, it's just
          * defined by this javaScript code, so it's anonymous. */
         mw.getSubscriptionClass(
-            'user_viewpoint_avatar'/*unique class name*/,
-            'avatar' /*shortName*/,
-            'user_avatar' /*description*/,
+            'user_viewpoint_avatar_url'/*unique class name*/,
+            'user_viewpoint_avatar_url' /*shortName*/,
+            'user viewpoint avatar URL' /*description*/,
 
             /* Creator initialization of this top level subscription class.
              * This is called each time a new subscription of this class
@@ -59,7 +59,7 @@
                 this.getSubscriptionClass(
                     'viewpoint_avatar_position'/*unique class name*/,
                     'viewpoint_avatar_position' /*shortName*/,
-                    'user avatar using viewpoint position' /*description*/,
+                    'avatar viewpoint position' /*description*/,
 
                     /* child creator */
                     function() {
@@ -111,6 +111,8 @@
 
                 this.write(avatar.url);
 
+                // Pass this subscription object to the next
+                // callback.
                 var subObj = this;
 
                 avatar.onChange = function(avatarUrl) {

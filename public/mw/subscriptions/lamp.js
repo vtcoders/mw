@@ -2,44 +2,84 @@
 (function () {
 
 
-    var lampModelUrl = 'lamp.x3d';
+    var prefix = mw_getScriptOptions().prefix;
+    var mw = mw_getScriptOptions().mw;
+    var lampModelUrl = prefix + '../tests/lamp.x3d';
+
+
+    // Default transformAttributes
+    var transformAttributes = { translation: '-3 4 -3' };
+
+    if(mw_getScriptOptions().transformAttributes !== undefined)
+        // Different than the default transformAttributes
+        transformAttributes = mw_getScriptOptions().transformAttributes;
+
+    mw_assert(mw_getScriptOptions().id !== undefined);
+    var namespace = lampModelUrl + '_' + mw_getScriptOptions().id;
 
 
     mw_addActor(lampModelUrl,
 
-        function(groupNode) {
+        function(transform) {
+
+            for(var k in transformAttributes)
+                transform.setAttribute(k, transformAttributes[k]);
+
+            var bulb = mw_getElementById(namespace + '__lampBulb');
+            var state = false;
 
             /* Get a named subscription: create it if it does not exist yet. */
-            var subscription = mw.getSubscription('lamp_' + lampModelUrl,
+            var s = mw.getSubscription(
+                /* unique subscription name */
+                'lamp_' + namespace.replace(/\//g, '_'),
+                'lamp_on_off',/*shortName*/
+                'turn lamp on the off',/*description*/
+
 
                 /* creator initialization */
                 function() {
 
                     // We start with the initial lamp value:
-                    this.write(true);
+                    this.write(state);
                 },
 
                 /* subscription reader function */
                 function(onOff) {
 
                     // TODO: turn on/off lamp
+                    console.log('Read that the Lamp is ' + onOff);
 
-                },
+                    if(onOff) // on
+                        // yellow-ish
+                        bulb.setAttribute("diffuseColor", ".95, .9, .25");
+                    else // off
+                        // gray-ish
+                        bulb.setAttribute("diffuseColor", ".64 .69 .72");
 
-                /* Cleanup function */
-                function() {
-                    groupNode.parentNode.removeChild(groupNode);
+                    state = onOff;
                 }
+
+                /* Cleanup function not required */
             );
 
-            // TODO: add subscription.write(onOff) calls in lamp x3dom
-            // event Listener, letting the subscription read function
-            // turn the lamp on and off; so that the state of the lamp
-            // stays consistent between many clients.
-            //
-            // The big question: do we toggle the lamp or do we set it
-            // on and off?  
+            // We are all writers of this shared toggle.
+            mw_getElementById(namespace + '__toggleSwitch').
+                addEventListener("click", function() {
 
-        });
+                    console.log('Clicking the lamp');
+                    // It does not matter that we are racing others to set
+                    // the light state, we just set it based on what we
+                    // see the state to be now.
+                    s.write(state = !state);
+            });
+
+        },
+
+        {
+            containerNodeType: 'Transform',
+            namespacename: namespace
+        },
+
+    );
 
 })();

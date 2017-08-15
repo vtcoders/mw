@@ -27,7 +27,7 @@ function mw_assert(val, msg=null) {
 
 // This starts the popup with widget showing
 // and has buttons that hide it.
-function mw_addPopupDialog(widget, button, func = null) {
+function _mw_addPopupDialog(widget, button, func = null) {
 
     if(button.onclick)
         document.body.appendChild(widget);
@@ -54,7 +54,7 @@ function mw_addPopupDialog(widget, button, func = null) {
         button.onclick = function() {
 
             // restart Popup Dialog
-            mw_addPopupDialog(widget, button, func);
+            _mw_addPopupDialog(widget, button, func);
         };
         return false;
     }
@@ -87,7 +87,16 @@ function mw_addPopupDialog(widget, button, func = null) {
 }
 
 
-function _mw_getElementById(id) {
+
+function mw_addPopupDialog(div, button, func=null) {
+
+    mw_addActor(_mw_popup_css_url, function() {
+            _mw_addPopupDialog(div, button, func);
+    });
+}
+
+
+function mw_getElementById(id) {
 
     var element = document.getElementById(id);
     if(!element) mw_fail("document.getElementById(" + id + ") failed");
@@ -268,8 +277,11 @@ function _mw_addX3d(url, onload = null,
     mw_assert(group);
 
     var inline = document.createElement('inline');
+    var namespacename = url;
+    if(opts.namespacename !== undefined)
+        namespacename = opts.namespacename;
     mw_assert(inline);
-    inline.setAttribute("namespacename", url);
+    inline.setAttribute("namespacename", namespacename);
 
     inline.onerror = function() {
         mw_fail(url + ' failed to load');
@@ -457,4 +469,9 @@ function mw_getScriptOptions() {
 
     return opts;
 }
+
+
+// We need to calculate the URL path now and not in the call
+// of a function later.
+var _mw_popup_css_url = _mw_getCurrentScriptPrefix() + 'mw_popupDialog.css';
 

@@ -140,7 +140,7 @@ function mw_client(
 
     ws.onmessage = function(e) {
 
-        //debug('message:\n     ' + e.data);
+        debug('message:\n     ' + e.data);
 
         var message = e.data;
         // Look for 'P' the magic constant.
@@ -267,80 +267,75 @@ function mw_client(
     mw.getAvatars = function(gotAvatarFunc) {
 
 
-        mw_addActor(_mw_getCurrentScriptPrefix() +
-            '../mw_popupDialog.css', function() {
+        // We ask the server for a list of avatar files and
+        // it returns it in the avatars array in the function
+        // callback.
+        mw.glob('/mw/avatars/*.x3d', function(err, avatars) {
 
-            // We ask the server for a list of avatar files and
-            // it returns it in the avatars array in the function
-            // callback.
-            mw.glob('/mw/avatars/*.x3d', function(err, avatars) {
+            debug('glob err=' + err + ' glob avatars=' + avatars);
+            if(err) {
+                debug('MW failed to get avatar list:\n   ' + err);
+                return;
+            }
 
-                debug('glob err=' + err + ' glob avatars=' + avatars);
-                if(err) {
-                    debug('MW failed to get avatar list:\n   ' + err);
-                    return;
-                }
-
-                var avatarObj = {};
+            var avatarObj = {};
                 
-                // Which avatar do we select from the array of avatars.
-                var avatarIndex = parseInt(clientId)%(avatars.length);
-                var button = document.getElementById('select_avatar');
-                if(!button) {
-                    button = document.createElement('A');
-                    button.href = '#';
-                    button.appendChild(document.createTextNode(
-                            'Select Avatar'));
-                    // TODO: could be prettier.
-                    document.body.appendChild(button);
-                    button.title = 'change avatar';
+            // Which avatar do we select from the array of avatars.
+            var avatarIndex = parseInt(clientId)%(avatars.length);
+            var button = document.getElementById('select_avatar');
+            if(!button) {
+                button = document.createElement('A');
+                button.href = '#';
+                button.appendChild(document.createTextNode(
+                        'Select Avatar'));
+                // TODO: could be prettier.
+                document.body.appendChild(button);
+                button.title = 'change avatar';
+            }
+
+            button.onclick = function(e) {
+
+                var div = document.createElement('div');
+                var h2 = document.createElement('h2');
+                h2.innerHTML = 'Select an Avatar';
+                div.appendChild(h2);
+                var select = document.createElement('select');
+                var innerHTML = '';
+
+                for(var i=0;i<avatars.length;++i) {
+                    innerHTML +=
+                        '<option value="' + avatars[i] + '"';
+                    if(i === avatarIndex)
+                        innerHTML += ' selected="selected"';
+                    innerHTML += '>' +
+                        avatars[i].replace(/^.*\/|/g,'').
+                        replace(/\.x3d$/, '').replace(/_/g, ' '); +
+                        '</option>\n';
                 }
 
-                button.onclick = function(e) {
-
-                    var div = document.createElement('div');
-                    var h2 = document.createElement('h2');
-                    h2.innerHTML = 'Select an Avatar';
-                    div.appendChild(h2);
-                    var select = document.createElement('select');
-                    var innerHTML = '';
-
-                    for(var i=0;i<avatars.length;++i) {
-                        innerHTML +=
-                            '<option value="' + avatars[i] + '"';
-                        if(i === avatarIndex)
-                            innerHTML += ' selected="selected"';
-                        innerHTML += '>' +
-                            avatars[i].replace(/^.*\/|/g,'').
-                            replace(/\.x3d$/, '').replace(/_/g, ' '); +
-                            '</option>\n';
+                select.innerHTML = innerHTML;
+                div.appendChild(select);
+                mw_addPopupDialog(div, button, function() {
+                    // On "Ok" callback function
+                    if(avatarIndex !== select.selectedIndex) {
+                        avatarIndex = select.selectedIndex;
+                        avatarObj.url = avatars[avatarIndex];
+                        if(avatarObj.onChange)
+                            avatarObj.onChange(avatars[avatarIndex]);
                     }
+                });
+            };
 
-                    select.innerHTML = innerHTML;
-                    div.appendChild(select);
-                    mw_addPopupDialog(div, button, function() {
-                        // On "Ok" callback function
-                        if(avatarIndex !== select.selectedIndex) {
-                            avatarIndex = select.selectedIndex;
-                            avatarObj.url = avatars[avatarIndex];
-                            if(avatarObj.onChange)
-                                avatarObj.onChange(avatars[avatarIndex]);
-                        }
-                    });
-                };
+            // Call the users  gotAvatarFunc() callback with the
+            // avatar object.
+            debug("avatars=" + avatars +
+                " my avatar=" + avatars[avatarIndex]);
 
-                // Call the users  gotAvatarFunc() callback with the
-                // avatar object.
-                debug("avatars=" + avatars +
-                    " my avatar=" + avatars[avatarIndex]);
+            avatarObj.url = avatars[avatarIndex];
+            avatarObj.onChange = null;
+            gotAvatarFunc(avatarObj);
 
-                avatarObj.url = avatars[avatarIndex];
-                avatarObj.onChange = null;
-                gotAvatarFunc(avatarObj);
-
-            }); // mw.glob('/mw/avatars/*.x3d',...)
-
-        }); // mw_addActor(prefix + '../mw_popupDialog.css'
+        }); // mw.glob('/mw/avatars/*.x3d',...)
 
     };
 
@@ -432,17 +427,15 @@ function mw_client(
             var s = subscriptions[id] = subscriptions[clientKey];
             // We don't need this additional reference to this any more.
             delete subscriptions[clientKey];
-            s.shortName = shortName;
-            s.id = id;
+            initializeSubscription(s, id, shortName);
         } else {
             mw_assert(clientKey === className);
             // This is a new subscription from a subscription class
             // so we keep the subscription class and copy it.
             // One copy is for all subscriptions in the class and one [id]
             // is active.
-            subscriptions[id] = subscriptions[clientKey].
+            var s = subscriptions[id] = subscriptions[clientKey].
                 copy(null/*no parentId*/, id, shortName);
-            var s = subscriptions[id];
         }
 
 
@@ -483,6 +476,53 @@ function mw_client(
     });
 
 
+    // Set the subscription ID.
+    // Replace buffered functions with real working functions
+    // that talk to the server.
+    function initializeSubscription(s, id, shortName) {
+
+        // We can't initialize more than once.
+        mw_assert(s.id === null);
+
+        s.id = id;
+        s.shortName = shortName;
+
+        s.write = function() {
+            ws.send('P' + id + '=' +
+                JSON.stringify({ args: [].slice.call(arguments)}));
+        };
+
+        if(s.writePayload !== null)
+            // Write the last buffered write from before
+            // we got an ID; i.e. flush.
+            ws.send('P' + id + '=' + s.writePayload);
+        delete s.writePayload;
+
+        console.log('\n\n\n\n ---- id=' + s.id  +
+                    ' isSubscribed=' + s.isSubscribed +
+                    ' isSubscribed_preInit=' + s.isSubscribed_preInit +
+                    '\n\n\n');
+
+
+        // TODO: do not do the following if it is not necessary.  In some
+        // cases the subscription is setup with these already set.
+
+        if(s.isSubscribed_preInit) {
+            s.isSubscribed = false;
+            s.subscribe();
+            // now s.isSubscribed === true
+        } else {
+            s.isSubscribed = true;
+            s.unsubscribe();
+            // now s.isSubscribed === false
+        }
+        delete s.isSubscribed_preInit;
+
+        s.makeOwner(s.isOwner_preInit);
+        delete s.isOwner_preInit;
+    }
+
+
     // A private factory that returns subscription objects.  These objects
     // returned will not have an associated subscription ID on the server.
     // They are not initialized for use.
@@ -505,12 +545,12 @@ function mw_client(
             mw_assert(lname.indexOf('/') === -1,
                 "name or className (" + lname + ") has a '/' in it.");
 
-        // If these 2 default values change you need to
-        // change other stuff.
+        // If these 2 default values change you may need to change other
+        // stuff.
         var defaults = {
-            isOwner: false,
-            isSubscribed: true
-        };
+            isSubscribed: true,
+            isOwner: false
+         };
 
 
         // make a subscription object explicitly
@@ -518,7 +558,9 @@ function mw_client(
             id: null,
 
             isSubscribed: defaults.isSubscribed,
+            isSubscribed_preInit: defaults.isSubscribed,
             isOwner: defaults.isOwner,
+            isOwner_preInit: defaults.isOwner,
 
             children: [],
             myParent: myParent, // The word parent is reserved
@@ -555,8 +597,6 @@ function mw_client(
                 // to add more code here.
                 for(var k in this)
                     s[k] = this[k];
-                for(var k in defaults)
-                    s[k] = defaults[k];
                 // Do not share the children.  We are told
                 // who our parent is.
                 s.children = [];
@@ -569,31 +609,20 @@ function mw_client(
                     s.myParent = p;
                     p.children.push(s);
                 }
-
-                s.id = id;
-                s.shortName = shortName;
-                if(s.isSubscribed) {
-                    // reset subscribe to the default
-                    s.isSubscribed = false;
-                    s.subscribe();
-                    // now s.isSubscribed === true
-                }
-                this.write = function() {
-                    ws.send('P' + this.id + '=' +
-                        JSON.stringify(
-                            { args: [].slice.call(arguments)}));
-                };
+                initializeSubscription(s, id, shortName);
                 return s;
             },
             subscribe: function() {
-                mw_assert(this.id, 'subscription not initialized locally');
+                if(this.id === null) {
+                    // It is not initialized yet so just
+                    // buffer the state.
+                    this.isSubscribed_preInit = true;
+                    return;
+                }
                 if(this.isSubscribed) return;
                 emit('subscribe', this.id);
                 this.isSubscribed = true;
                 this.readerFunc = this.readerFunc_save;
-                debug('\n\n\n\n id=' + this.id +
-                    ' Setting subscribed readerFunc=' +
-                    this.readerFunc + '\n\n\n');
                 if(this.readPayload && this.readerFunc) {
                     this.readerFunc(...(this.readPayload));
                     readPayload = null;
@@ -605,24 +634,31 @@ function mw_client(
 
             },
             unsubscribe: function() {
-                mw_assert(this.id, 'not initialized');
+                if(this.id === null) {
+                    // It is not initialized yet so just
+                    // buffer the state.
+                    this.isSubscribed_preInit = false;
+                    return;
+                }
                 if(!this.isSubscribed) return;
                 emit('unsubscribe', this.id);
                 this.isSubscribed = false;
                 this.readerFunc = null;
             },
             write: function() {
-                mw_assert(this.id, '');
-                ws.send('P' + this.id + '=' +
-                    JSON.stringify({ args: [].slice.call(arguments)}));
-                // We do not use the readerFunc until this comes back from
-                // the server.  That will keep the subscription
-                // consistent payload with all clients.
+                // Buffer the write for now.  We flush this buffer
+                // and change this function after initialization.
+                this.writePayload =
+                    JSON.stringify({ args: [].slice.call(arguments)});
             },
-            // make this WebSocket client an owner
+            // make this WebSocket client a subscription owner
             makeOwner: function(isOwner=true) {
-                mw_assert(this.id, 'not initialized');
-                if(this.isOwner === isOwner) return;
+                if(this.id === null) {
+                    // It is not initialized yet so just
+                    // buffer the state.
+                    this.isOwner_preInit = isOwner;
+                    return;
+                }
                 emit('makeOwner', this.id, isOwner);
                 this.isOwner = isOwner;
             },
@@ -638,6 +674,7 @@ function mw_client(
                             this/*Parent*/);
                     this.children.push(child);
                     child.myParent = this;
+                    return child;
             },
             getSubscriptionClass:
                 function(className, shortName, description,
@@ -651,6 +688,7 @@ function mw_client(
                             this/*Parent*/);
                     this.children.push(child);
                     child.myParent = this;
+                    return child;
             },
 
             // Set a new reader callback function
@@ -660,16 +698,11 @@ function mw_client(
                 this.readerFunc_save = readerFunc;
                 if(this.isSubscribed) {
                     this.readerFunc = readerFunc;
-                    debug('\n\n\nid='+this.id+
-                        '  this.readPayload=='+ this.readPayload + '\n\n\n');
-
                     if(this.readPayload && readerFunc !== null) {
                         this.readerFunc(...(this.readPayload));
                         this.readPayload = null;
                     }
                 }
-                console.log('\n\n\n subscription ID=' + this.id +
-                        '  readerFunc set to: ' + readerFunc + '\n\n');
             },
             setCleanup: function(cleanupFunc) {
                 mw_assert(this.id, 'not initialized');
@@ -717,7 +750,7 @@ function mw_client(
             shortName, description,
             creatorFunc=null, readerFunc=null, cleanupFunc=null) {
 
-        newSubscription(
+        return newSubscription(
                 name, null, shortName, description,
                 creatorFunc, readerFunc, cleanupFunc);
     };
@@ -735,7 +768,7 @@ function mw_client(
             shortName, description,
             creatorFunc=null, readerFunc=null, cleanupFunc=null) {
 
-        newSubscription(
+        return newSubscription(
                 null, className, shortName, description,
                 creatorFunc, readerFunc, cleanupFunc);
     };
