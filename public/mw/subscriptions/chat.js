@@ -13,6 +13,9 @@
     var div = document.createElement('div');
     div.innerHTML = '<h2>Chat</h2>\n';
     div.appendChild(ul_messages);
+    var input = document.createElement('textarea');
+    div.appendChild(input);
+    input.autofocus = true;
 
     //mw_addPopupDialog(div, button);
 
@@ -46,7 +49,12 @@
         /*TODO: No Cleanup function yet*/
     );
 
-    s.write('<em>' + mw.user + "</em> joined chat session")
+    s.write('<em>' + mw.user + '</em> joined chat session');
+
+    input.oninput = function() {
+        s.write('<em>' + mw.user + '</em> ' + input.value);
+    };
+
 
     // TODO: add input widget and handler callback that does 
 
