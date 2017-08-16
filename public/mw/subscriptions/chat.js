@@ -1,8 +1,18 @@
 
 (function () {
 
+    // TODO: this needs to be rewritten with a lot more polish
+    //
+    // TODO: add an enter name thingy.  The name would only
+    // be associated with this chat session.
+    //
+    // TODO: Chat session history???  So you can see the whole session if
+    // you join late.  This may require additions to the subscription
+    // client/server protocol.
+
     var mw =  mw_getScriptOptions().mw;
 
+    // TODO: make this HTML better.
     var ul_messages = document.createElement('ul');
     var button = document.createElement('A');
     button.href = '#';
@@ -17,9 +27,8 @@
     div.appendChild(input);
     input.autofocus = true;
 
-    //mw_addPopupDialog(div, button);
-
     button.onclick = function(e) {
+        // TODO: kind of a dumb place to put a chat session.
         mw_addPopupDialog(div, button);
     };
 
@@ -51,11 +60,11 @@
 
     s.write('<em>' + mw.user + '</em> joined chat session');
 
-    input.oninput = function() {
-        s.write('<em>' + mw.user + '</em> ' + input.value);
+    input.onkeyup = function(e) {
+        if(e.keyCode == 13 /*<enter>*/) {
+            s.write('<em>' + mw.user + '</em> ' + input.value);
+            input.value = '';
+        }
     };
-
-
-    // TODO: add input widget and handler callback that does 
 
 })();

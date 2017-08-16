@@ -498,12 +498,6 @@ function mw_client(
             ws.send('P' + id + '=' + s.writePayload);
         delete s.writePayload;
 
-        console.log('\n\n\n\n ---- id=' + s.id  +
-                    ' isSubscribed=' + s.isSubscribed +
-                    ' isSubscribed_preInit=' + s.isSubscribed_preInit +
-                    '\n\n\n');
-
-
         // TODO: do not do the following if it is not necessary.  In some
         // cases the subscription is setup with these already set.
 
