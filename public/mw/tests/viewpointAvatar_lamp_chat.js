@@ -19,7 +19,7 @@
             // above lamp.
             transformAttributes: { translation: '-1.5 4 -1.5' }
         });
-:
+
     mw_addActor(prefix + '../subscriptions/chat.js');
 
 })();
