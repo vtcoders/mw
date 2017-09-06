@@ -33,11 +33,11 @@ PREFIX ?= $(HOME)/installed/mirrorworlds
 
 # Default web server http port
 # Can be changed to any value with program options.
-HTTP_PORT ?= 8888
+HTTP_PORT ?= 8889
 
 # Default web server https port
 # Can be changed to any value with program options.
-HTTPS_PORT ?= 4443
+HTTPS_PORT ?= 4445
 
 # The first line of the mw_server program file
 JSNODE_SHABANG ?= /usr/bin/env node

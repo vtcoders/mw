@@ -40,7 +40,11 @@ for more configuration options.
 The Mirror Worlds server is installed as mw_server in the directory
 ```PREFIX/bin/```.  Run
 ```mw_server --help```
-for help.
+for help.  The Mirror Worlds server uses Express (the node JS package).
+For added debugging spew you can set the environment variable
+```DEBUG=express:*``` for the running of mw_server, like so in a bash
+shell:
+```DEBUG=express:* mw_server```
 
 
 #### Example:

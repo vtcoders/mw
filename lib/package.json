@@ -6,7 +6,8 @@
   "dependencies": {
     "ws": "2.2.0",
     "csv": "^0.4.6",
-    "glob": "7.1.1"
+    "glob": "7.1.1",
+    "express": "4.15.3"
   },
   "devDependencies": {
   },
