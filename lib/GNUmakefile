@@ -1,14 +1,13 @@
 # This is a GNU make file that uses GNU make make extensions
 
-top_srcdir := ..
 
 sep = /////////////////////////////////////////////////////
 
-mw_server: mw_server.js GNUmakefile $(top_srcdir)/config.make
-	(echo "#!$(JSNODE_SHABANG)" > $@ &&\
+mw_server: mw_server.js GNUmakefile ../config.make
+	(echo "#!$(NODEJS_SHABANG)" > $@ &&\
         echo "// This is a generated file" >> $@ &&\
 	echo "// build date: $(shell date)" >> $@ &&\
-        echo "/****** Built configurated defaults ******/" >> $@ &&\
+        echo "/****** Built with these configured defaults ******/" >> $@ &&\
         echo "var config = {};" >> $@ &&\
         echo "config.http_port = \"$(HTTP_PORT)\";" >> $@ &&\
         echo "config.https_port = \"$(HTTPS_PORT)\";" >> $@ &&\
@@ -26,7 +25,7 @@ INSTALL_DIR = $(PREFIX)/lib
 # addition to the many automatically built and installed based on the
 # suffix rules in common.make
 BUILD := mw_server
-INSTALLED := mw_server
+INSTALLED := mw_server node_modules
 
 
-include $(top_srcdir)/common.make
+include ../quickbuild.make

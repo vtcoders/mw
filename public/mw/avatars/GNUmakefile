@@ -1,6 +1,5 @@
 # This is a GNU make file that uses GNU make make extensions
 
-top_srcdir := ../../..
 
 # The file teapot.x3d.xxx is just a source file, that is used to generate
 # many files. We did not give it a file suffix that would cause the build
@@ -9,4 +8,4 @@ top_srcdir := ../../..
 
 INSTALL_DIR = $(PREFIX)/public/mw/avatars
 
-include $(top_srcdir)/common.make
+include ../../../quickbuild.make

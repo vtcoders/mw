@@ -1,9 +1,9 @@
 # This is a GNU make file that uses GNU make make extensions
 
-top_srcdir := ../..
 
 INSTALL_DIR = $(PREFIX)/public/mw
 
+INSTALLED := x3dom
 
-include $(top_srcdir)/common.make
 
+include ../../quickbuild.make

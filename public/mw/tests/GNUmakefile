@@ -1,9 +1,7 @@
 # This is a GNU make file that uses GNU make make extensions
 
-top_srcdir := ../../..
 
-INSTALL_DIR = $(PREFIX)/public/mw/test
+INSTALL_DIR = $(PREFIX)/public/mw/tests
 
 
-include $(top_srcdir)/common.make
-
+include ../../../quickbuild.make

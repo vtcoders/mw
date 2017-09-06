@@ -173,7 +173,7 @@ EOF
 function setMakeVar()
 {
     if [ -n "${!2}" ] ; then
-        echo "$1 = ${!2}" >> config.make
+        echo "$1 ?= ${!2}" >> config.make
         echo "$1 = ${!2}"
         val_set=yes
     fi
@@ -183,7 +183,7 @@ function setMakeVar()
 setMakeVar PREFIX PREFIX
 setMakeVar JS_COMPRESS jscompress
 setMakeVar CSS_COMPRESS csscompress
-setMakeVar JSNODE_SHABANG shabang
+setMakeVar NODEJS_SHABANG shabang
 setMakeVar HTTP_PORT port
 setMakeVar HTTPS_PORT s_port
 
