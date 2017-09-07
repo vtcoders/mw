@@ -2,4 +2,4 @@
 
 . mk_teapot.bash
 
-mk_teapot "0 1 0" > green_teapot.x3d
+mk_teapot "0 1 0"

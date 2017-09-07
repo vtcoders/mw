@@ -5,7 +5,7 @@
 
 # PREFIX is there from quickbuild
 
-# JSNODE_SHABANG is there from quickbuild
+# NODEJS_SHABANG is there from quickbuild
 
 # CSS_COMPRESS is there from quickbuild
 #CSS_COMPRESS ?= yui-compressor --line-break 70 --type css

@@ -2,4 +2,4 @@
 
 . mk_teapot.bash
 
-mk_teapot "0 0 1"
+mk_teapot "1 0.5 0"
