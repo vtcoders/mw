@@ -1,6 +1,3 @@
-    console.log('HELLO');
-
-
 // one stinking global object
 var _mw = {
 
@@ -140,7 +137,7 @@ function mw_client(
 
     ws.onmessage = function(e) {
 
-        debug('message:\n     ' + e.data);
+        //debug('message:\n     ' + e.data);
 
         var message = e.data;
         // Look for 'P' the magic constant.
