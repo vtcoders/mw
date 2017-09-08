@@ -14,6 +14,30 @@ Currently being developed on GNU/Linux systems: Debian 8.6, and Xubuntu
 
 ### yui-compressor (optional, build-time only)
 
+### `mw_videoMotionTracking` depends on the OpenCV package which is at
+https://github.com/opencv.   On Ubuntu (16.04) building OpenCV required
+the following prerequisite packages:
+
+```
+ git\
+ cmake\
+ build-essential\
+ qt5-default\
+ python-dev\
+ python3-dev\
+ python-numpy\
+ python3-numpy\
+ default-jdk\
+ default-jre\
+ ant\
+ libavcodec-dev\
+ libavformat-dev\
+ libavutil-dev\
+ libswscale-dev\
+ libavresample-dev\
+ libv4l-dev
+```
+
 
 ## Installing
 
