@@ -7,17 +7,29 @@ var _mw = {
 };
 
 
-// This is the Mirror Worlds client factory function
-//
+/** This is a factory function that makes the Mirror Worlds client which
+ * includes a WebSocket connection.
+ *
+ * @namespace
+ *
+ * @param {function} [null] userInit - Optional argument.  Callback function
+ * that is called with the created client object as the first argument.
+ *
+ * @param {Object} [{}] opts - Optional argument.  opts.url is the URL of the
+ * WebSocket server.  The default URL is the URL is gotten from the web
+ * (HTTP) server that served this javaScript file.
+ */ 
 // opts { url: 'url' }
 function mw_client(
+        userInit = null, opts = {})
+{
+    if(userInit === null)
         userInit = function(mw) {
             console.log('MW called default userInit('+mw+')');
-        }, opts = {})
-{
+        };
+
     // We handle protocols: http: https: ws: wss:
     // The http(s) protocols are converted to ws: or wss:
-
     var defaultUrl = location.protocol.replace(/^http/, 'ws') +
         '//' + location.hostname + ':' + location.port + '/';
 
@@ -130,6 +142,10 @@ function mw_client(
 
     // URL accessor; because the URL may not be the same
     // as the user started with.
+    /** Get the WebSocket connection URL.
+     *
+     * @return WebSocket connection URL as a string.
+     */
     mw.url = function() {
         return url;
     };
@@ -733,27 +749,78 @@ function mw_client(
         return subscription;
     }
 
-
-    // Create a named subscription.  Clearly the creatorFunc is ignored if
-    // the subscription exists on the server already.
+    // TODO: Figure out how to remove the static in front of the docjs generated
+    // getSubscription() documentation.
+    /** Create a named subscription.  Clearly the creatorFunc is ignored if
+     * the subscription exists on the server already.
+     *
+     * @memberof mw_client
+     * @function getSubscription
+     *
+     * @example
+     * mw_client(function(mw) {
+     *     mw.getSubscription('chat', 'chat', 'my chat');
+     * });
+     *
+     * @param {string} name - Unique subscription name for this service.
+     * @param {string} shortDescription - a short decription. For example
+     * one or two words like: "red_truck".  The server
+     * will append to this string making it more unique.
+     * @param {string} description - a longer description.  May have HTML
+     * in it.
+     * @param {function} [null] creatorFunc - creatorFunc is called if this
+     * subscription does not exist in the service yet.
+     * @param {function} [null] readerFunc - readerFunc is if this client
+     * is subscribed and a client is writing to the subscription.
+     * @param {function} [null] cleanupFunc - cleanupFunc is called if the
+     * subscription is destroyed on the server.
+     *
+     * @return {Object} - returns a subscription object.
+     */
     mw.getSubscription = function(
             name,
-            shortName, description,
+            shortDescription, description,
             creatorFunc=null, readerFunc=null, cleanupFunc=null) {
 
         return newSubscription(
-                name, null, shortName, description,
+                name, null, shortDescription, description,
                 creatorFunc, readerFunc, cleanupFunc);
     };
 
 
-    // Create an unnamed subscription, as in we do not care what it is
-    // called on the server.   The new subscription created by each client
-    // that calls this is just defined by the callback functions that are
-    // set.   shortName and description are not required to be unique,
-    // they are just user descriptions.  The readerFunc, and
-    // cleanupFunc callbacks are the guts of define the behavior of the
-    // subscription.
+    /** Create a unnamed subscription, as in we do not care what it is
+     * called on the server.   The new subscription created by each client
+     * that calls this is just defined by the callback functions that are
+     * set.
+     *
+     * @memberof mw_client
+     * @function getSubscriptionClass
+     *
+     * @example
+     * mw_client(function(mw) {
+     *     mw.getSubscriptionClass('avatar', 'avatar',
+     *         'avatars for everybody');
+     * });
+     *
+     * @example
+     * {@link ../subscriptions/viewPointAvatar.js viewPointAvatar.js}
+     *
+     * @param {string} className - Unique subscription class name for this service.
+     * @param {string} shortDescription - a short decription. For example
+     * one or two words like: "red_truck".  The server
+     * will append to this string making it more unique.
+     * @param {string} description - a longer description.  May have HTML
+     * in it.
+     * @param {function} [null] creatorFunc - creatorFunc is called when this
+     * subscription is made available by the server.
+     * @param {function} [null] readerFunc - readerFunc is if this client
+     * is subscribed and a client is writing to the subscription.
+     * @param {function} [null] cleanupFunc - cleanupFunc is called if the
+     * subscription is destroyed on the server.
+     *
+     * @return {Object} - returns a subscription object.
+     */
+
     mw.getSubscriptionClass = function(
             className, /* unique for this SubscriptionClass */
             shortName, description,

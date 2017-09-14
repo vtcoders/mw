@@ -12,7 +12,10 @@ function Download()
 
     set -x
 
-    if ! wget $2 -O $1 --no-use-server-timestamps ; then
+    local ckopts=
+    [ -n "$3" ] && ckopts="--no-check-certificate"
+
+    if ! wget $2 -O $1 --no-use-server-timestamps $ckopts ; then
         rm -f $1
         return 1
     fi

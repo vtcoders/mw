@@ -372,7 +372,24 @@ function mw_getScene() {
     return _mw.scene;
 }
 
-
+/** Load a file from a given URL.
+ *
+ * This adds particular option depending on the file type loaded.
+ * File types are:
+ *
+ *   .x3d - X3D files
+ *
+ *   .js - javaScript files
+ *
+ *   .css - CSS style files
+ *
+ *  @param {string} [null] url - The relative or full URL of the file.
+ *
+ *  @param {function} [null] onload - Function called after the file
+ *  is loaded.
+ *
+ *  @param {Object} [null] opt - Additional options.
+ */
 // Add a node from a served file:
 //
 //    <inline> for .x3d added to <scene>
@@ -434,6 +451,10 @@ function _mw_getCurrentScriptPrefix() {
 }
 
 
+/** A utility object that is used to get options to javaScript loaded with
+ * mw_addActor().
+ *
+ */ 
 function mw_getScriptOptions() {
 
     mw_assert(document.currentScript,

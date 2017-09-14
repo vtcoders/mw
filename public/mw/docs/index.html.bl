@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -ex
+
+../../../lib/node_modules/.bin/jsdoc -d . ../mw.js ../util.js
