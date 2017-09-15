@@ -10,9 +10,7 @@ var _mw = {
 /** This is a factory function that makes the Mirror Worlds client which
  * includes a WebSocket connection.
  *
- * @typedef mw
- * @implements getSubscription
- * @implements getSubscriptionClass
+ * @class
  *
  * @param {function} [null] userInit - Optional argument.  Callback function
  * that is called with the created client object as the first argument.
