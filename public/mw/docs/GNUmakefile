@@ -8,7 +8,8 @@ BUILD := index.html
 
 
 # This rule will run JSdoc to make the documents
-index.html: ../mw.js ../util.js
+index.html: ../mw.js ../util.js ../subscriptions/viewpointAvatar.js
+	rm -rf fonts scripts styles index.html
 	../../../lib/node_modules/.bin/jsdoc -d . $^
 
 # Install these generated directories in addition to index.html

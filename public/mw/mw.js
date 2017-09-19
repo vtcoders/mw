@@ -7,10 +7,22 @@ var _mw = {
 };
 
 
+/** @interface MW */
+/** @interface Subscription */
+/**
+ * @typedef mw
+ * @implements MW
+ */
+/**
+ * @typedef subscription
+ * @implements Subscription
+ */
+
+
 /** This is a factory function that makes the Mirror Worlds client which
  * includes a WebSocket connection.
  *
- * @class
+ * @function
  *
  * @param {function} [null] userInit - Optional argument.  Callback function
  * that is called with the created client object as the first argument.
@@ -18,6 +30,8 @@ var _mw = {
  * @param {Object} [{}] opts - Optional argument.  opts.url is the URL of the
  * WebSocket server.  The default URL is the URL is gotten from the web
  * (HTTP) server that served this javaScript file.
+ *
+ * @return {mw}
  */ 
 // opts { url: 'url' }
 function mw_client(
@@ -27,6 +41,7 @@ function mw_client(
         userInit = function(mw) {
             console.log('MW called default userInit('+mw+')');
         };
+
 
     // We handle protocols: http: https: ws: wss:
     // The http(s) protocols are converted to ws: or wss:
@@ -144,7 +159,10 @@ function mw_client(
     // as the user started with.
     /** Get the WebSocket connection URL.
      *
-     * @return WebSocket connection URL as a string.
+     * @function
+     * @name MW#url
+     *
+     * @return {string} - WebSocket connection URL as a string.
      */
     mw.url = function() {
         return url;
@@ -532,7 +550,7 @@ function mw_client(
 
     // A private factory that returns subscription objects.  These objects
     // returned will not have an associated subscription ID on the server.
-    // They are not initialized for use.
+    // They are not initialized for use yet.
     function newSubscription(
             name, className,
             shortName, description,
@@ -749,13 +767,14 @@ function mw_client(
         return subscription;
     }
 
+
     // TODO: Figure out how to remove the static in front of the docjs generated
     // getSubscription() documentation.
     /** Create a named subscription.  Clearly the creatorFunc is ignored if
      * the subscription exists on the server already.
      *
-     * @memberof mw_client
-     * @function getSubscription
+     * @function
+     * @name MW#getSubscription
      *
      * @example
      * mw_client(function(mw) {
@@ -773,9 +792,9 @@ function mw_client(
      * @param {function} [null] readerFunc - readerFunc is if this client
      * is subscribed and a client is writing to the subscription.
      * @param {function} [null] cleanupFunc - cleanupFunc is called if the
-     * subscription is destroyed on the server.
+     * associated subscription is destroyed on the server.
      *
-     * @return {Object} - returns a subscription object.
+     * @return {subscription} - returns a subscription object.
      */
     mw.getSubscription = function(
             name,
@@ -793,13 +812,12 @@ function mw_client(
      * that calls this is just defined by the callback functions that are
      * set.
      *
-     * @memberof mw_client
-     * @function getSubscriptionClass
+     * @function
+     * @name MW#getSubscriptionClass
      *
      * @example
      * mw_client(function(mw) {
-     *     mw.getSubscriptionClass('avatar', 'avatar',
-     *         'avatars for everybody');
+     *     mw.getSubscriptionClass('avatar', 'avatar', 'avatars for everybody');
      * });
      *
      * @example
@@ -816,9 +834,9 @@ function mw_client(
      * @param {function} [null] readerFunc - readerFunc is if this client
      * is subscribed and a client is writing to the subscription.
      * @param {function} [null] cleanupFunc - cleanupFunc is called if the
-     * subscription is destroyed on the server.
+     * associated subscription is destroyed on the server.
      *
-     * @return {Object} - returns a subscription object.
+     * @return {subscription} - returns a subscription object.
      */
 
     mw.getSubscriptionClass = function(
@@ -865,6 +883,7 @@ function mw_client(
 }
 
 
+
 // WebRTC
 // https://www.html5rocks.com/en/tutorials/webrtc/basics/
 // https://www.w3.org/TR/webrtc/
@@ -884,7 +903,6 @@ function mw_init() {
     }
 
     mw_client(/*on initiate*/function(mw) {
-
         mw_addActor(url, null, { mw: mw });
     });
 }

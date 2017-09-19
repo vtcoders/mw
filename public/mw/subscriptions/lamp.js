@@ -30,10 +30,11 @@
 
             /* Get a named subscription: create it if it does not exist yet. */
             var s = mw.getSubscription(
+
                 /* unique subscription name */
                 'lamp_' + namespace.replace(/\//g, '_'),
-                'lamp_on_off',/*shortName*/
-                'turn lamp on the off',/*description*/
+                'lamp_on_off',/*shortDescription*/
+                'turn lamp on and off',/*description*/
 
 
                 /* creator initialization */
@@ -46,7 +47,6 @@
                 /* subscription reader function */
                 function(onOff) {
 
-                    // TODO: turn on/off lamp
                     console.log('Read that the Lamp is ' + onOff);
 
                     if(onOff) // on
