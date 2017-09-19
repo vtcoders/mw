@@ -8,6 +8,10 @@
 //
 // The subscription (2) is a child of (1).
 //
+/** @tutorial viewpointAvatar
+ *
+ *  This javaScript codes implements a simple viewpoint avatar.
+ */
 
 (function () {
 
@@ -23,8 +27,8 @@
          * defined by this javaScript code, so it's anonymous. */
         mw.getSubscriptionClass(
             'user_viewpoint_avatar_url'/*unique class name*/,
-            'user_viewpoint_avatar_url' /*shortName*/,
-            'user viewpoint avatar URL' /*description*/,
+            'user_viewpoint_avatar_url'/*shortDescription*/,
+            'user viewpoint avatar URL'/*description*/,
 
             /* Creator initialization of this top level subscription class.
              * This is called each time a new subscription of this class
@@ -58,8 +62,8 @@
                  * top level avatarUrl parent subscription. */
                 this.getSubscriptionClass(
                     'viewpoint_avatar_position'/*unique class name*/,
-                    'viewpoint_avatar_position' /*shortName*/,
-                    'avatar viewpoint position' /*description*/,
+                    'viewpoint_avatar_position'/*shortDescription*/,
+                    'avatar viewpoint position'/*description*/,
 
                     /* child creator */
                     function() {

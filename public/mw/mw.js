@@ -587,6 +587,7 @@ function mw_client(
             isOwner: defaults.isOwner,
             isOwner_preInit: defaults.isOwner,
 
+            // subscriptions in a family tree
             children: [],
             myParent: myParent, // The word parent is reserved
 
@@ -637,6 +638,13 @@ function mw_client(
                 initializeSubscription(s, id, shortName);
                 return s;
             },
+            /** Read the subscription: Set the associated MW client to
+             * read the subscription by calling the set readFunc()
+             * function.
+             *
+             * @function
+             * @name Subscription#subscribe
+             */
             subscribe: function() {
                 if(this.id === null) {
                     // It is not initialized yet so just
@@ -653,11 +661,28 @@ function mw_client(
                     readPayload = null;
                 }
             },
+            /** Destroy the subscription.  Destroy this objects associated
+             * subscription by contacting the MW WebSocket server.  All
+             * browser clients will lose their associated subscription.
+             *
+             * The associated subscription cleanup callbacks will be
+             * called on all the clients.
+             *
+             * @function
+             * @name Subscription#destroy
+             */
             destroy: function() {
                 mw_assert(this.id, 'not initialized');
                 emit('destroy', this.id);
 
             },
+            /** Do not read the subscription: Set the associated MW client
+             * to not read the subscription.  This will connect the server
+             * and tell it we are not subscribing.
+             *
+             * @function
+             * @name Subscription#unsubscribe
+             */
             unsubscribe: function() {
                 if(this.id === null) {
                     // It is not initialized yet so just
@@ -670,13 +695,31 @@ function mw_client(
                 this.isSubscribed = false;
                 this.readerFunc = null;
             },
+            /** Write to a subscription. The arguments to this function
+             * can be varied.  The arguments must be consistent with the
+             * corresponding subscription {@link Subscription#setReader
+             * read} calls.
+             *
+             * @function
+             * @name Subscription#write
+             */
             write: function() {
                 // Buffer the write for now.  We flush this buffer
                 // and change this function after initialization.
                 this.writePayload =
                     JSON.stringify({ args: [].slice.call(arguments)});
             },
-            // make this WebSocket client a subscription owner
+            /** Made this MW client an owner of the subscription.
+             * This will contact the server.
+             *
+             * If all owners of a subscription disconnect from the server
+             * the subscription will be destroyed.
+             *
+             * @see {@link Subscription#destroy destroy}.
+             *
+             * @function
+             * @name Subscription#makeOwner
+             */
             makeOwner: function(isOwner=true) {
                 if(this.id === null) {
                     // It is not initialized yet so just
@@ -687,6 +730,17 @@ function mw_client(
                 emit('makeOwner', this.id, isOwner);
                 this.isOwner = isOwner;
             },
+            /** This is like {@link MW#getSubscription getSubscription}
+             * but adding that the subscription by a child of this objects
+             * associated subscription.  The arguments are the same as in
+             * {@link MW#getSubscription getSubscription} too.
+             *
+             * Child subscriptions are dependent on parent subscriptions.
+             * The Child can't exist without the parent.
+             *
+             * @function
+             * @name Subscription#getSubscription
+             */
             getSubscription:
                 function(name, shortName, description,
                         creatorFunc, readerFunc=null, cleanupFunc=null) {
@@ -701,6 +755,18 @@ function mw_client(
                     child.myParent = this;
                     return child;
             },
+            /** This is like {@link MW#getSubscriptionClass
+             * getSubscriptionClass} but adding that the subscription by a
+             * child of this objects associated subscription.  The
+             * arguments are the same as in {@link MW#getSubscriptionClass
+             * getSubscriptionClass} too.
+             *
+             * Child subscriptions are dependent on parent subscriptions.
+             * The Child can't exist without the parent.
+             *
+             * @function
+             * @name Subscription#getSubscriptionClass
+             */
             getSubscriptionClass:
                 function(className, shortName, description,
                         creatorFunc, readerFunc=null, cleanupFunc=null) {
@@ -715,8 +781,20 @@ function mw_client(
                     child.myParent = this;
                     return child;
             },
-
-            // Set a new reader callback function
+            /** Set the reader callback for this subscription.
+             * The arguments of the reader callback must be in the same
+             * form as the arguments to the corresponding subscription
+             * {@link Subscription#write write} function.
+             *
+             * If all owners of a subscription disconnect from the server
+             * the subscription will be destroyed.
+             *
+             * @function
+             * @name Subscription#setReader
+             *
+             * @param {function} readerFunc - the function to call when
+             * the server pushes subscription data to this client.
+             */
             setReader: function(readerFunc) {
                 mw_assert(this.id, 'not initialized id=' + this.id);
                 // This will be the read function if we subscribe
@@ -729,6 +807,14 @@ function mw_client(
                     }
                 }
             },
+            /** Set the cleanup callback function which is call if
+             * this subscription is destroyed.
+             *
+             * @function
+             * @name Subscription#setReader
+             *
+             * @see {@link Subscription#destroy destroy}.
+             */
             setCleanup: function(cleanupFunc) {
                 mw_assert(this.id, 'not initialized');
                 this.cleanupFunc = cleanupFunc;
@@ -770,8 +856,17 @@ function mw_client(
 
     // TODO: Figure out how to remove the static in front of the docjs generated
     // getSubscription() documentation.
-    /** Create a named subscription.  Clearly the creatorFunc is ignored if
-     * the subscription exists on the server already.
+
+    /** Create or check a named subscription.
+     *
+     * The format of subscription data that is shared is determined by the
+     * form of the arguments for the subscription {@link Subscription#read
+     * read} and {@link Subscription#write write} functions. The arguments
+     * are just turned into JSON data that is send to and from the server,
+     * similar to how SocketIO sends and receives arguments across
+     * WebSockets.   Any MW client may write (push) to a subscription, and
+     * reading is pushed for each write to all subscribed MW clients by
+     * calling the registered readFunc callback.
      *
      * @function
      * @name MW#getSubscription
@@ -790,7 +885,12 @@ function mw_client(
      * @param {function} [null] creatorFunc - creatorFunc is called if this
      * subscription does not exist in the service yet.
      * @param {function} [null] readerFunc - readerFunc is if this client
-     * is subscribed and a client is writing to the subscription.
+     * is subscribed and a client is writing to the subscription.  The
+     * readerFunc callback made also be set with the {@link
+     * Subscription#setReader setReader} method.  The arguments of the
+     * readerFunc callback must be in the same form as the arguments to
+     * the corresponding subscription {@link Subscription#write write}
+     * function.
      * @param {function} [null] cleanupFunc - cleanupFunc is called if the
      * associated subscription is destroyed on the server.
      *
@@ -812,6 +912,16 @@ function mw_client(
      * that calls this is just defined by the callback functions that are
      * set.
      *
+     * The format of subscription data that is shared is determined by the
+     * form of the arguments for the subscription {@link
+     * Subscription#setReader read} and {@link Subscription#write write}
+     * functions. The arguments are just turned into JSON data that is
+     * send to and from the server, similar to how SocketIO sends and
+     * receives arguments across WebSockets.   Any MW client may write
+     * (push) to a subscription, and reading is pushed for each write to
+     * all subscribed clients by calling the registered readFunc
+     * callback.
+     *
      * @function
      * @name MW#getSubscriptionClass
      *
@@ -821,7 +931,7 @@ function mw_client(
      * });
      *
      * @example
-     * {@link ../subscriptions/viewPointAvatar.js viewPointAvatar.js}
+     * {@tutorial viewpointAvatar.js}
      *
      * @param {string} className - Unique subscription class name for this service.
      * @param {string} shortDescription - a short decription. For example
@@ -832,13 +942,17 @@ function mw_client(
      * @param {function} [null] creatorFunc - creatorFunc is called when this
      * subscription is made available by the server.
      * @param {function} [null] readerFunc - readerFunc is if this client
-     * is subscribed and a client is writing to the subscription.
+     * is subscribed and a client is writing to the subscription.  The
+     * readerFunc callback made also be set with the {@link
+     * Subscription#setReader setReader} method.  The arguments of the
+     * readerFunc callback must be in the same form as the arguments to
+     * the corresponding subscription {@link Subscription#write write}
+     * function.
      * @param {function} [null] cleanupFunc - cleanupFunc is called if the
      * associated subscription is destroyed on the server.
      *
      * @return {subscription} - returns a subscription object.
      */
-
     mw.getSubscriptionClass = function(
             className, /* unique for this SubscriptionClass */
             shortName, description,

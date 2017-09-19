@@ -87,7 +87,14 @@ function _mw_addPopupDialog(widget, button, func = null) {
 }
 
 
-
+/** Adds an pop simple up dialog.
+ *
+ * @param {Node}[div] HTML DOM node element that is added as a child of the
+ * pop up dialog
+ * @param {Node}[button] HTML DOM node element that has an onclick method.
+ * @param {function}[null] func - is a function that is called
+ * with no arguments when the pop up has the "Okay" pressed.
+ */
 function mw_addPopupDialog(div, button, func=null) {
 
     mw_addActor(_mw_popup_css_url, function() {
@@ -96,6 +103,9 @@ function mw_addPopupDialog(div, button, func=null) {
 }
 
 
+/** A simple error checking wrapper of document.getElementById()
+ * which will spew to console.log and call alert() if it fails.
+ */
 function mw_getElementById(id) {
 
     var element = document.getElementById(id);
@@ -352,7 +362,8 @@ function _mw_addActor(url, onload = null, opts = null) {
     }
 }
 
-
+/** Get the X3D Scene node.
+ */
 function mw_getScene() {
 
     if(_mw.scene === undefined) {
@@ -384,10 +395,10 @@ function mw_getScene() {
  *   .css - CSS style files
  *
  *  @param {string} [null] url - The relative or full URL of the file.
- *
+ *  If url is an Array this will load all URLs in the Array, and
+ *  the onload callback will be called after all the URLs are loaded.
  *  @param {function} [null] onload - Function called after the file
  *  is loaded.
- *
  *  @param {Object} [null] opt - Additional options.
  */
 // Add a node from a served file:
