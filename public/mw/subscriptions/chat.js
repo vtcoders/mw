@@ -1,3 +1,13 @@
+/** @file
+ *
+ * This javaScript codes implements chat session that is shared with other
+ * clients.
+ *
+ * @namespace file_subscription_chat
+ *
+ * @see
+ * {@link file_test_lamp}
+ */
 
 (function () {
 

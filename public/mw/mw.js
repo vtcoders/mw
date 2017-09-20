@@ -1,3 +1,12 @@
+/** @file
+ *
+ * Implements most of the {@link MW} client and {@link Subscription}
+ * code.
+ *
+ * @namespace file_mw
+ */
+
+
 // one stinking global object
 var _mw = {
 
@@ -730,13 +739,11 @@ function mw_client(
                 emit('makeOwner', this.id, isOwner);
                 this.isOwner = isOwner;
             },
-            /** This is like {@link MW#getSubscription getSubscription}
-             * but adding that the subscription by a child of this objects
-             * associated subscription.  The arguments are the same as in
-             * {@link MW#getSubscription getSubscription} too.
-             *
-             * Child subscriptions are dependent on parent subscriptions.
-             * The Child can't exist without the parent.
+            /** This is creates a subscription that is a child of this
+             * subscription.  Child subscriptions are dependent on parent
+             * subscriptions.  The Child can't exist without the parent.
+             * See {@link MW#getSubscription getSubscription} for
+             * arguments and other details.
              *
              * @function
              * @name Subscription#getSubscription
@@ -755,14 +762,12 @@ function mw_client(
                     child.myParent = this;
                     return child;
             },
-            /** This is like {@link MW#getSubscriptionClass
-             * getSubscriptionClass} but adding that the subscription by a
-             * child of this objects associated subscription.  The
-             * arguments are the same as in {@link MW#getSubscriptionClass
-             * getSubscriptionClass} too.
-             *
-             * Child subscriptions are dependent on parent subscriptions.
-             * The Child can't exist without the parent.
+            /** This is like creates a subscription adding that the
+             * subscription as child of this subscription.  Child
+             * subscriptions are dependent on parent subscriptions.  The
+             * Child can't exist without the parent.  See {@link
+             * MW#getSubscriptionClass getSubscriptionClass} for
+             * arguments and other details.
              *
              * @function
              * @name Subscription#getSubscriptionClass
@@ -876,6 +881,10 @@ function mw_client(
      *     mw.getSubscription('chat', 'chat', 'my chat');
      * });
      *
+     * @example
+     * See {@link file_subscription_lamp} and {@link file_subscription_chat}.
+     *
+     *
      * @param {string} name - Unique subscription name for this service.
      * @param {string} shortDescription - a short decription. For example
      * one or two words like: "red_truck".  The server
@@ -931,7 +940,7 @@ function mw_client(
      * });
      *
      * @example
-     * {@tutorial viewpointAvatar.js}
+     * {@link file_subscription_viewpointAvatar}
      *
      * @param {string} className - Unique subscription class name for this service.
      * @param {string} shortDescription - a short decription. For example

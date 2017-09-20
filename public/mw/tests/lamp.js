@@ -1,3 +1,14 @@
+/** @file
+ *
+ * This javaScript codes loads a very simple test world and a
+ * lamp with on and off state that is shared between clients.
+ *
+ * @namespace file_test_lamp
+ *
+ * @see
+ * {@link file_subscription_lamp}
+ */
+
 (function() {
 
     var prefix = mw_getScriptOptions().prefix;

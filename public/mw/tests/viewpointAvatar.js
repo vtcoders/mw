@@ -1,3 +1,14 @@
+/** @file
+ *
+ * This javaScript codes loads a very simple world and a simple
+ * viewpointAvatar as a {@link MW#getSubscriptionClass subscription}.
+ *
+ * @see
+ * {@link file_subscription_viewpointAvatar}
+ *
+ * @namespace file_test_chat
+ */
+
 (function() {
 
     var prefix = mw_getScriptOptions().prefix;

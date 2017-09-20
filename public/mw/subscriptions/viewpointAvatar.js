@@ -8,9 +8,14 @@
 //
 // The subscription (2) is a child of (1).
 //
-/** @tutorial viewpointAvatar
+/** @file
  *
- *  This javaScript codes implements a simple viewpoint avatar.
+ * This javaScript codes implements a simple viewpoint avatar.
+ *
+ * @namespace file_subscription_viewpointAvatar
+ *
+ * @see
+ * {@link file_test_viewpointAvatar}
  */
 
 (function () {

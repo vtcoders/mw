@@ -1,3 +1,13 @@
+/** @file
+ *
+ * This javaScript codes implements simple lamp that we can share whither
+ * it is on or off with other clients.
+ *
+ * @namespace file_subscription_lamp
+ *
+ * @see
+ * {@link file_test_lamp}
+ */
 
 (function () {
 

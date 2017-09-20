@@ -400,6 +400,19 @@ function mw_getScene() {
  *  @param {function} [null] onload - Function called after the file
  *  is loaded.
  *  @param {Object} [null] opt - Additional options.
+ *
+ *
+ *  @see
+ *  {@link file_test_simple}
+ *
+ *  @see
+ *  {@link file_test_viewpointAvatar}
+ *
+ *  @see
+ *  {@link file_test_chat}
+ *
+ *  @see
+ *  {@link file_test_viewpointAvatar_lamp_chat}
  */
 // Add a node from a served file:
 //
@@ -465,6 +478,8 @@ function _mw_getCurrentScriptPrefix() {
 /** A utility object that is used to get options to javaScript loaded with
  * mw_addActor().
  *
+ * @example
+ * {@link file_subscription_lamp}
  */ 
 function mw_getScriptOptions() {
 

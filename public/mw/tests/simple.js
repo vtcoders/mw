@@ -1,3 +1,13 @@
+/** @file
+ *
+ * This javaScript codes loads a very simple test world.
+ *
+ * @see
+ * {@link mw_getScriptOptions}
+ *
+ * @namespace file_test_simple
+ */
+
 // Run this after this script is loaded which is after the mirror worlds
 // client is setup.
 (function() {
