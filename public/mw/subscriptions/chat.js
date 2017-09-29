@@ -53,8 +53,11 @@
         /* subscription creator initialization */
         function() {
 
-            // We start with this initial value for this subscription
-            this.write('<em>' + mw.user + "</em> created chat");
+            if(this.create)
+                // We start with this initial value for this subscription
+                this.write('<em>' + mw.user + "</em> created chat");
+            else
+                this.write('<em>' + mw.user + '</em> joined chat session');
         },
 
         /* subscription reader */
@@ -67,8 +70,6 @@
 
         /*TODO: No Cleanup function yet*/
     );
-
-    s.write('<em>' + mw.user + '</em> joined chat session');
 
     input.onkeyup = function(e) {
         if(e.keyCode == 13 /*<enter>*/) {

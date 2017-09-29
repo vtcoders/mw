@@ -119,7 +119,7 @@ function mw_client(
     var subscriptions = {};
 
     // advertisements are subscriptions that we have not loaded
-    // any javaScript for yet, due to race or whatever reason.
+    // any javaScript yet, due to race or whatever reason.
     var advertisements = {};
 
     // for globing files on the server
@@ -480,6 +480,8 @@ function mw_client(
 
 
         if(thisClientIsCreator) {
+            s.create = true;
+            Object.freeze(s.create);
             if(s.creatorFunc)
                 // We could not do this before the server replied because we
                 // did not know if we are the creator of this subscription, at
@@ -496,7 +498,12 @@ function mw_client(
             //if(!name)
                 // Save a pointer to this subscription
                 //subscriptions[clientKey].creator = s;
+        } else {
+            s.create = false;
+            Object.freeze(s.create);
         }
+
+        
 
         // We don't need the subscription creator callback any more.
         delete s.creatorFunc;

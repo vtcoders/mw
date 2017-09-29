@@ -47,11 +47,12 @@
                 'turn lamp on and off',/*description*/
 
 
-                /* creator initialization */
+                /* initialization */
                 function() {
 
-                    // We start with the initial lamp value:
-                    this.write(state);
+                    if(this.create)
+                        // We start with the initial lamp value:
+                        this.write(state);
                 },
 
                 /* subscription reader function */
