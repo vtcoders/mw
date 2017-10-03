@@ -54,15 +54,18 @@ while [ -n "$1" ] ; do
 done
 
 
-set -x
 set -o pipefail
 
+echo "prefix=$prefix"
+echo "nodeJS github tag=$tag"
+
+set -x
 mkdir BUILD_nodejs
 cd BUILD_nodejs
 
 path=nodejs/node
 
-wget -O - https://github.com/$path/tarball/$tag | tar -xvz
+wget -O - https://github.com/$path/tarball/$tag | tar -xz
 
 cd nodejs-node*
 
@@ -70,3 +73,5 @@ cd nodejs-node*
 make -j$(nproc)
 make install
 
+set +x
+echo "SUCCESSFULLY installed nodeJS $tag in prefix=$prefix"
