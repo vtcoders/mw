@@ -152,7 +152,7 @@ if (this.create) {
 			var subscription = this;
 
 			// TODO: how should json Data work with mw_addActor?
-			mw_addActor(jsonData,
+			/**mw_addActor(jsonData,
 
 				function(transformNode) {
 
@@ -199,7 +199,7 @@ if (this.create) {
 
 				}, {
 				containerNodeType: 'Transform'
-			});
+			});*/
 
 			/**
 			 * skeleton illustration below
