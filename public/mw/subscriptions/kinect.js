@@ -75,9 +75,9 @@ if (this.create) {
 				 * for each client that calls this.  It will depend on the
 				 * top level avatarUrl parent subscription. */
 				this.getSubscriptionClass(
-					'viewpoint_model_position'/*unique class name*/,
-					'viewpoint_model_position'/*shortDescription*/,
-					'kinect model viewpoint position'/*description*/,
+					'viewpoint_kinect'/*unique class name*/,
+					'viewpoint_kinect'/*shortDescription*/,
+					'kinect model viewpoint'/*description*/,
 
 					/* child creator */
 					function() {
@@ -101,7 +101,7 @@ if (this.create) {
 							// send to server and in turn it's
 							// sent to other clients as our
 							// avatar's current 6D position.
-							childSubscription.write(e.position, e.orientation);
+							childSubscription.write(e.orientation);
 						};
 
 						// TODO: If the current view point object changes this
@@ -135,15 +135,14 @@ if (this.create) {
 		},
 
 		/* subscription reader function */
-		function(jsonData) {
-			var pos = null, rot;
+		function(jsonObject) {
+			var rot;
 
 			if(this.TransformNode !== undefined) {
 			    // If we are changing the avatar URL: remove the old
 			    // model and than add a new model.
 			    // First copy the old avatar position and orientation
 			    // so we can put the new one there.
-			    pos = this.TransformNode.getAttribute('translation');
 			    rot = this.TransformNode.getAttribute('rotation');
 			    this.TransformNode.parentNode.removeChild(this.TransformNode);
 			}
@@ -152,7 +151,7 @@ if (this.create) {
 			var subscription = this;
 
 			// TODO: how should json Data work with mw_addActor?
-			/**mw_addActor(jsonData,
+			mw_addActor(jsonObject,
 
 				function(transformNode) {
 
@@ -169,10 +168,8 @@ if (this.create) {
 					// This client will become a reader of a
 					// particular subscription when setReader() is
 					// called here:
-					child.setReader(function(pos, rot) {
+					child.setReader(function(rot) {
 
-					    transformNode.setAttribute('translation',
-					        pos.x + ' ' + pos.y + ' ' + pos.z);
 					    transformNode.setAttribute('rotation',
 					        rot[0].x + ' ' + rot[0].y + ' ' +
 					        rot[0].z + ' ' + rot[1]);
@@ -191,15 +188,13 @@ if (this.create) {
 					if(pos) {
 					    // We are changing avatars so we need to
 					    // remember where to put the avatar.
-					    transformNode.setAttribute('translation', pos);
 					    transformNode.setAttribute('rotation', rot);
-					    pos = null;
 					    rot = null;
 					}
 
 				}, {
 				containerNodeType: 'Transform'
-			});*/
+			});
 
 			/**
 			 * skeleton illustration below
