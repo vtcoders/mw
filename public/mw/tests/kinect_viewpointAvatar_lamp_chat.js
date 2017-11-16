@@ -17,8 +17,6 @@
     mw_addActor(prefix + 'plane.x3d');
     mw_addActor(prefix + 'gnome.x3d');
 
-    mw_addActor(prefix + '../subscriptions/viewpointAvatar.js');
-
     mw_addActor(prefix + '../subscriptions/lamp.js', null,
         { id: '0'/*unique ID to this ../subscriptions/lamp.js lamp*/
         });
