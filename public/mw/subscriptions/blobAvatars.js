@@ -21,133 +21,59 @@
 (function () {
 
     var mw = mw_getScriptOptions().mw;
+    var groupNode = null; // top level
+    var masterTransformNode = null;
 
-    /* TODO: This makes a dummy subscription that is needed since we can't
-     * get the read callbacks for other subscriptions of this class that
-     * are made on the server.  We need to not do it this way. 
-     *
-     * The solution may be that if there is no creator callback (=null)
-     * then this requests that the server makes a subscription class
-     * but with no subscription instance.  For this to work we
-     * need to be able to call subscription.addChild() before the server
-     * responds, so that we can still have subscription family trees.
-     * */
+    mw_addActor(mw_getScriptOptions().prefix + "../avatars/av2c_q.x3d",
+        function(transformNode) {
+            masterTransformNode = transformNode;
+            groupNode = transformNode.parentNode;
+            groupNode.removeChild(transformNode);
+            // We clone this master Node and add it back to the scene in
+            // the subscription read callback.
+        },{
+            containerNodeType: 'Transform'
+    });
 
-    /* Create a new subscription for each client that calls this.  We
-     * don't care what this subscription is called, it's just defined by
-     * this javaScript code, so it's anonymous. */
-    mw.getSubscriptionClass(
-        'blob_avatar_url'/*unique class name*/,
-        'blob_avatar_url'/*shortDescription*/,
-        'blob avatar URL'/*description*/,
 
-        /* Creator initialization of this top level subscription class.
-         * Each client that runs this javaScript will run this
-         * creator function once and just once for the subscription
-         * instance that is created. 
-         *
-         * TODO: Remove this constructor and fix the subscription protocol */
+    mw.getSubscription(
+        'blob_avatar_position'/*unique name*/,
+        'blob_avatar_position'/*shortDescription*/,
+        'blob avatar position'/*description*/,
+
+        /* creator callback */
         function() {
 
             this.unsubscribe();
             this.makeOwner();
-
-            /* Create a child subscription.  Create a new subscription
-             * for each client that calls this.  It will depend on the
-             * top level avatarUrl parent subscription. */
-            this.getSubscriptionClass(
-                'blob_avatar_position'/*unique class name*/,
-                'blob_avatar_position'/*shortDescription*/,
-                'blob avatar position'/*description*/,
-
-                /* child creator */
-                function() {
-
-                    this.unsubscribe();
-                    this.makeOwner();
-                },
-                // we have no consumer functions for this child
-                // subscription class yet, because we need to wait for
-                // the model to load.
-
-                // we have no cleanup functions for this child
-                // subscription class yet
-                );
         },
+        /* read callback */
+        function(id, exists, pos, rot) {
 
-        /* particular consumer (reader) of this top level subscription
-         * class.  So this is called each time a client writes to a
-         * particular subscription of this class. */
-        function(avatarUrl) {
+            if(groupNode === null) return;
 
-            var pos = null, rot;
-
-            if(this.TransformNode !== undefined) {
-                // If we are changing the avatar URL: remove the old
-                // model and than add a new model.
-                // First copy the old avatar position and orientation
-                // so we can put the new one there.
-                pos = this.TransformNode.getAttribute('translation');
-                rot = this.TransformNode.getAttribute('rotation');
-                this.TransformNode.parentNode.removeChild(this.TransformNode);
+            if(this.BlobTransforms === undefined) {
+                this.BlobTransforms = {};
             }
 
-            // Get *this* for up-coming function scope
-            var subscription = this;
+            if(exists && this.BlobTransforms[id] === undefined) {
+                this.BlobTransforms[id] = masterTransformNode.cloneNode(true/*deep*/);
+                groupNode.appendChild(this.BlobTransforms[id]);
+            } else if(!exists && this.BlobTransforms[id] !== undefined) {
+                groupNode.removeChild(this.BlobTransforms[id]);
+                delete this.BlobTransforms[id];
+                return;
+            }
 
-            mw_addActor(avatarUrl,
+            this.BlobTransforms[id].setAttribute('translation',
+                    pos[0] + ' ' + pos[1] + ' ' + pos[2]);
 
-                function(transformNode) {
+            //console.log("blob at: " + this.BlobTransforms[id].getAttribute('translation'));
 
-                    // TODO: find a better way to get child subscriptions
-                    var child = subscription.children[0];
-
-                    // Save the top model node in case we need to
-                    // change the avatar.
-
-                    // So we can remove the old model above.
-                    subscription.TransformNode = transformNode;
-
-                    // Sets a consumer for a particular subscription.
-                    // This client will become a reader of a
-                    // particular subscription when setReader() is
-                    // called here:
-                    child.setReader(function(pos, rot) {
-
-                        transformNode.setAttribute('translation',
-                            pos.x + ' ' + pos.y + ' ' + pos.z);
-                        transformNode.setAttribute('rotation',
-                            rot[0].x + ' ' + rot[0].y + ' ' +
-                            rot[0].z + ' ' + rot[1]);
-                    });
-
-
-                    // Sets a cleanup function for a particular
-                    // subscription, otherwise the model will stay and
-                    // stop being a moving avatar after the corresponding
-                    // user quits.  Gets called by parent cleanup
-                    // too.
-                    child.setCleanup(function() {
-                        transformNode.parentNode.removeChild(transformNode);
-                    });
-
-                    if(pos) {
-                        // We are changing avatars so we need to
-                        // remember where to put the avatar.
-                        transformNode.setAttribute('translation', pos);
-                        transformNode.setAttribute('rotation', rot);
-                        pos = null;
-                        rot = null;
-                    }
-
-                }, {
-                    containerNodeType: 'Transform'
-            });
+            this.BlobTransforms[id].setAttribute('rotation',
+                            rot[0] + ' ' + rot[1] + ' ' +
+                            rot[2] + ' ' + rot[3]);
         }
-
-        /* No cleanup function for top level subscription for a
-         * particular subscription */
     );
-
 
 })();
