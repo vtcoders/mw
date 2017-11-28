@@ -13,15 +13,17 @@
             return;
         }
 
-        var button = document.getElementById('select_avatar');
-        if(!button) {
-            button = document.createElement('A');
-            button.href = '#';
-            button.appendChild(document.createTextNode('Select Avatar'));
-            // TODO: could be prettier.
-            document.body.appendChild(button);
-            button.title = 'change avatar';
-        }
+        // var button = document.getElementById('select_avatar');
+        // if(!button) {
+        //     button = document.createElement('A');
+        //     button.href = '#';
+        //     button.appendChild(document.createTextNode('Select Avatar'));
+        //     // TODO: could be prettier.
+        //     document.body.appendChild(button);
+        //     button.title = 'change avatar';
+        // }
+
+        var button = document.getElementById('menuButton');
 
         button.onclick = function(e) {
 
