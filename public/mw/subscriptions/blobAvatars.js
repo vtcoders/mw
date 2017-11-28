@@ -22,31 +22,43 @@
 
     var mw = mw_getScriptOptions().mw;
 
+    /* TODO: This makes a dummy subscription that is needed since we can't
+     * get the read callbacks for other subscriptions of this class that
+     * are made on the server.  We need to not do it this way. 
+     *
+     * The solution may be that if there is no creator callback (=null)
+     * then this requests that the server makes a subscription class
+     * but with no subscription instance.  For this to work we
+     * need to be able to call subscription.addChild() before the server
+     * responds, so that we can still have subscription family trees.
+     * */
 
-    /* Create a new subscription for each client that calls this.
-     * We don't care what this subscription is called, it's just
-     * defined by this javaScript code, so it's anonymous. */
+    /* Create a new subscription for each client that calls this.  We
+     * don't care what this subscription is called, it's just defined by
+     * this javaScript code, so it's anonymous. */
     mw.getSubscriptionClass(
         'blob_avatar_url'/*unique class name*/,
         'blob_avatar_url'/*shortDescription*/,
         'blob avatar URL'/*description*/,
 
         /* Creator initialization of this top level subscription class.
-         * This is called each time a new subscription of this class
-         * is created.  Each client that runs this javaScript will
-         * run this creator function. */
+         * Each client that runs this javaScript will run this
+         * creator function once and just once for the subscription
+         * instance that is created. 
+         *
+         * TODO: Remove this constructor and fix the subscription protocol */
         function() {
 
-                this.unsubscribe();
-                this.makeOwner();
+            this.unsubscribe();
+            this.makeOwner();
 
-                /* Create a child subscription.  Create a new subscription
-                 * for each client that calls this.  It will depend on the
-                 * top level avatarUrl parent subscription. */
-                this.getSubscriptionClass(
-                    'blob_avatar_position'/*unique class name*/,
-                    'blob_avatar_position'/*shortDescription*/,
-                    'blob avatar position'/*description*/,
+            /* Create a child subscription.  Create a new subscription
+             * for each client that calls this.  It will depend on the
+             * top level avatarUrl parent subscription. */
+            this.getSubscriptionClass(
+                'blob_avatar_position'/*unique class name*/,
+                'blob_avatar_position'/*shortDescription*/,
+                'blob avatar position'/*description*/,
 
                 /* child creator */
                 function() {
@@ -60,7 +72,7 @@
 
                 // we have no cleanup functions for this child
                 // subscription class yet
-            );
+                );
         },
 
         /* particular consumer (reader) of this top level subscription
