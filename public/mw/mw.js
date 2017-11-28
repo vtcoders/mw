@@ -41,7 +41,7 @@ var _mw = {
  * (HTTP) server that served this javaScript file.
  *
  * @return {mw}
- */ 
+ */
 // opts { url: 'url' }
 function mw_client(
         userInit = null, opts = {})
@@ -104,10 +104,10 @@ function mw_client(
 
 
     var url = opts.url;
-    var clientId = 'unset'; // unique id from the server 
+    var clientId = 'unset'; // unique id from the server
 
     var ws =new WebSocket(url);
-    
+
     // for on() and emit() socket.IO like interfaces
     var onCalls = {};
 
@@ -188,7 +188,7 @@ function mw_client(
 
             // The message should be of the form: 'P343=' + jsonString
             // where 343 is an example source ID.  An example of a
-            // mininum
+            // minimum
             // message would be like 'P2={}'
             var idLen = 1;
             var stop = message.length - 3;
@@ -209,7 +209,7 @@ function mw_client(
                     'subscription with ID=' + sourceId + ' was not found');
             // There is an option to not have a callback to receive
             // the payload with subscriptions[sourceId].readPayload === null.
-            
+
             if(subscriptions[sourceId].readerFunc !== null)
                 (subscriptions[sourceId].readerFunc)(...obj.args);
             else {
@@ -297,7 +297,7 @@ function mw_client(
         emit('glob', expression, globRequestIdCount.toString());
         globFuncs[(globRequestIdCount++).toString()] = func;
     };
- 
+
 
     // gotAvatarFunc(avatars) is a function that gets the argument
     // avatars that is an object which has access to the array of
@@ -319,9 +319,12 @@ function mw_client(
             }
 
             var avatarObj = {};
-                
+
             // Which avatar do we select from the array of avatars.
-            var avatarIndex = parseInt(clientId)%(avatars.length);
+            // var avatarIndex = parseInt(clientId)%(avatars.length);
+
+            // Set default to smoke avatar for demo
+            var avatarIndex = 0;
             var button = document.getElementById('select_avatar');
             if(!button) {
                 button = document.createElement('A');
@@ -432,7 +435,7 @@ function mw_client(
             var x = ads[i];
 
             mw_assert(x && x.className, "'advertise' className was not set");
-        
+
             // TODO: add additional javaScript loading for the subscription
 
             if(subscriptions[x.className] === undefined) {
@@ -503,7 +506,7 @@ function mw_client(
             Object.freeze(s.create);
         }
 
-        
+
 
         // We don't need the subscription creator callback any more.
         delete s.creatorFunc;
@@ -1036,5 +1039,3 @@ function mw_init() {
         mw_addActor(url, null, { mw: mw });
     });
 }
-
-
