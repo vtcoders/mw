@@ -20,27 +20,31 @@
     // you join late.  This may require additions to the subscription
     // client/server protocol.
 
-    var mw =  mw_getScriptOptions().mw;
+   var mw =  mw_getScriptOptions().mw;
 
     // TODO: make this HTML better.
-    var ul_messages = document.createElement('ul');
-    var button = document.createElement('A');
+    var ul_messages = document.getElementById('messages');
+    /*var button = document.createElement('A');
     button.href = '#';
     button.appendChild(document.createTextNode('Chat'));
     // TODO: could be prettier.
+    var tempLoc = document.getElementById()
     document.body.appendChild(button);
     button.title = 'chat';
     var div = document.createElement('div');
     div.innerHTML = '<h2>Chat</h2>\n';
-    div.appendChild(ul_messages);
-    var input = document.createElement('textarea');
-    div.appendChild(input);
+    div.appendChild(ul_messages);*/
+
+    console.log("I actually enter the file");
+    var input = document.getElementById('inputField');
+    var send = document.getElementById('sendButton');
+  //  div.appendChild(input);
     input.autofocus = true;
 
-    button.onclick = function(e) {
-        // TODO: kind of a dumb place to put a chat session.
-        mw_addPopupDialog(div, button);
-    };
+    // button.onclick = function(e) {
+    //     // TODO: kind of a dumb place to put a chat session.
+    //     mw_addPopupDialog(div, button);
+    // };
 
 
     /* Get a named subscription: create it if it does not exist yet. */
@@ -76,6 +80,10 @@
             s.write('<em>' + mw.user + '</em> ' + input.value);
             input.value = '';
         }
+    };
+    send.onclick = function(e) {
+          s.write('<em>' + mw.user + '</em> ' + input.value);
+          input.value = '';
     };
 
 })();
