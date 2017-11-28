@@ -172,15 +172,14 @@ section {
 .widgetContent {
     overflow: auto;
     /*overflow-y: scroll;*/
-    display: inline-block;
-    width: 230px;
-    height: 800px;
+    display: block;
+    width: 100%;
+    height: calc(100% - 110px);
     /*min-height: 0px;*/
-    padding: 10px;
 }
 #inputField {
 	margin-left: 5px;
-	width: 155px;
+	width: 170px;
 	height: 25px;
     position: absolute;
     bottom: 10px;
@@ -192,9 +191,6 @@ section {
     margin-bottom: 30px;
     margin-top: 0px;
 	padding: 0;
-    max-height: 75%;
-    /*overflow:hidden;*/
-    /*overflow-y:scroll;*/
 }
 
 #messages li {
@@ -205,15 +201,29 @@ section {
 	background: #eee;
 }
 
+#sendBox {
+    height: 50px;
+    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    display: block;
+    background-color: #A1A1A1;
+}
+
 #sendButton {
     margin-left: 5px;
     height: 30px;
-	width: 50px;
+	width: 55px;
 	background-color: rgb(56,56,56);
-  color: rgb(126, 126, 126);
+    color: #DBDBDB;
 	border: none;
     position: absolute;
     bottom: 10px;
-    right: 25px;
+    right: 10px;
     font-weight: bold;
+}
+
+#sendButton:hover {
+    background-color: #262626;
+    color: #737373;
 }
