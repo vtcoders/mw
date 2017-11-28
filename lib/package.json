@@ -8,7 +8,8 @@
     "csv": "^0.4.6",
     "glob": "7.1.1",
     "express": "4.15.3",
-    "jsdoc": "3.5.5"
+    "jsdoc": "3.5.5",
+    "socket.io-client": "2.0.4"
   },
   "devDependencies": {
   },

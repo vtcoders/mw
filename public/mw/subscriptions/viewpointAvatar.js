@@ -35,10 +35,9 @@
             'user_viewpoint_avatar_url'/*shortDescription*/,
             'user viewpoint avatar URL'/*description*/,
 
-            /* Creator initialization of this top level subscription class.
-             * This is called each time a new subscription of this class
-             * is created.  Each client that runs this javaScript will
-             * run this creator function. */
+            /* Creator initialization of this top level subscription
+             * class.  Each client that runs this javaScript will run this
+             * creator function once and just once. */
             function() {
 
                 // *this* is the subscription.
