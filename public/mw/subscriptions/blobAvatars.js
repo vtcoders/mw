@@ -29,7 +29,7 @@
             masterTransformNode = transformNode;
             groupNode = transformNode.parentNode;
             groupNode.removeChild(transformNode);
-            // We clone this master Node and add it back to the scene in
+            // We clone this master Node and add clones to the scene in
             // the subscription read callback.
         },{
             containerNodeType: 'Transform'
@@ -44,8 +44,8 @@
         /* creator callback */
         function() {
 
-            this.unsubscribe();
-            this.makeOwner();
+            this.subscribe();
+            this.makeOwner(false);
         },
         /* read callback */
         function(id, exists, pos, rot) {
@@ -56,19 +56,23 @@
                 this.BlobTransforms = {};
             }
 
-            if(exists && this.BlobTransforms[id] === undefined) {
-                this.BlobTransforms[id] = masterTransformNode.cloneNode(true/*deep*/);
-                groupNode.appendChild(this.BlobTransforms[id]);
-            } else if(!exists && this.BlobTransforms[id] !== undefined) {
-                groupNode.removeChild(this.BlobTransforms[id]);
-                delete this.BlobTransforms[id];
+            if(exists) {
+                if(this.BlobTransforms[id] === undefined) {
+                    this.BlobTransforms[id] = masterTransformNode.cloneNode(true/*deep*/);
+                    groupNode.appendChild(this.BlobTransforms[id]);
+                }
+            } else if(!exists) {
+                if(this.BlobTransforms[id] !== undefined) {
+                    groupNode.removeChild(this.BlobTransforms[id]);
+                    delete this.BlobTransforms[id];
+                }
                 return;
             }
 
             this.BlobTransforms[id].setAttribute('translation',
                     pos[0] + ' ' + pos[1] + ' ' + pos[2]);
 
-            //console.log("blob at: " + this.BlobTransforms[id].getAttribute('translation'));
+            console.log("blob at: " + this.BlobTransforms[id].getAttribute('translation'));
 
             this.BlobTransforms[id].setAttribute('rotation',
                             rot[0] + ' ' + rot[1] + ' ' +
