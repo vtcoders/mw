@@ -18,7 +18,8 @@
 # The tag can be "master" or a full git check-in hash in lower case hex
 # like for example:
 #tag=dc184319be9a272ffa4528f5bb5d0902f1edbbbb
-tag=master
+tag=775f301d0145654cc2c72f9b8672f8d1d3897f6f
+#tag=master
 url=https://raw.githubusercontent.com/lanceman2/quickbuild/$tag/quickbuild.make
 
 # If we wanted a particular file, so we checks it's sha512 sum.
